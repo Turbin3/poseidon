@@ -1,0 +1,15 @@
+[package]
+name = "poseidon2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.75"
+convert_case = "0.6.0"
+swc_common = { version = "0.33.2", features=["tty-emitter"] }
+swc_ecma_parser = { version = "0.141.6", features = ["typescript"] }
+swc_ecma_ast = "0.110.2"
+thiserror = "1.0.50"
+quote = "1.0.33"
+proc-macro2 = "1.0.69"
+rust-format = "0.3.4"
