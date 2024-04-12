@@ -57,5 +57,5 @@ pub fn transpile(module: &Module) {
         None => panic!("Program class undefined")
     }
     let serialized_program = program.to_tokens();
-    fs::write("counter.rs", RustFmt::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
+    fs::write("counter2.rs", RustFmt::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
 }

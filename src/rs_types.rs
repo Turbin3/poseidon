@@ -1,7 +1,7 @@
 use core::panic;
 use std::{collections::{HashSet, HashMap}, fs};
 use convert_case::{Case, Casing};
-use swc_ecma_ast::{TsInterfaceDecl, TsExprWithTypeArgs, ClassExpr, Lit, ClassMethod, BindingIdent, Stmt, Expr};
+use swc_ecma_ast::{BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, Lit, Stmt, TsExprWithTypeArgs, TsInterfaceDecl};
 use quote::quote;
 use proc_macro2::{Ident, TokenStream, Literal};
 
@@ -45,6 +45,8 @@ impl InstructionAccount {
             },
             None => quote!{}
         };
+
+        // need to differentiate between first initiation of bump so we can retrive from existing acc incase bumps are stored in diff acc
         let bump = match self.bump {
             Some(b) => {
                 let bump = Ident::new(&b.to_string(), proc_macro2::Span::call_site());
@@ -54,6 +56,7 @@ impl InstructionAccount {
             },
             None => quote!{}
         };
+        // need to also declare payer in case of init
         let init = match self.is_init {
             true => quote!{init,},
             false => quote!{}
@@ -63,6 +66,7 @@ impl InstructionAccount {
                 #init
                 #seeds
                 #bump
+                
             )]
             pub #name: #of_type,
         )
@@ -104,6 +108,7 @@ impl ProgramInstruction {
     pub fn from_class_method(c: &ClassMethod, custom_accounts: &HashMap<String, ProgramAccount>) -> Self {
         // Get name
         let name = c.key.clone().expect_ident().sym.to_string();
+        // println!("{}",name);
         let mut ix = ProgramInstruction::new(name);
         // Get accounts and args
         let mut ix_accounts: HashMap<String, InstructionAccount> = HashMap::new();
@@ -114,6 +119,7 @@ impl ProgramInstruction {
             let ident = type_ann.expect("Invalid instruction argument").type_ann.expect_ts_type_ref().type_name.expect_ident();
             let of_type = ident.sym.to_string();
             let optional = ident.optional;
+
             // TODO: Make this an actual Enum set handle it correctly
             if STANDARD_TYPES.contains(&of_type.as_str()) {
                 ix_arguments.push(InstructionArgument {
@@ -128,30 +134,56 @@ impl ProgramInstruction {
             } else if custom_accounts.contains_key(&of_type) {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
                 ix_accounts.insert(name.clone(), InstructionAccount::new(
-                    name,
+                    name.clone(),
                     quote!{ Account<#ty> },
                     optional
                 ));
+                c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
+                    // println!("start : {:#?}", s);
+                    let s = s.clone().expect_expr().expr;
+                    if let Some(c) = s.as_call() {
+                        
+                        let chaincall1prop = c.clone().callee.expect_expr().expect_member().prop.expect_ident().sym;
+        
+        
+                        // let childcall1 = parentcall.callee.clone().expect_expr().expect_member();
+
+                        if let Some(parentcall) = c.clone().callee.expect_expr().expect_member().obj.as_call() {
+                            let members = parentcall.callee.clone().expect_expr().expect_member();
+                            let obj = members.obj.expect_ident().sym;
+                            let prop = members.prop.expect_ident().sym;
+                            println!("{}",obj);
+                            println!("{}",prop);
+                            let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                        
+                            if prop == "derive"{
+                                if chaincall1prop == "init" {
+                                    (*cur_ix_acc).is_init = true;
+                                }
+                            }
+
+                            println!("{:#?}", cur_ix_acc);
+                        }
+                    // let args = parentcall.args.0.
+                        
+                    }
+        
+                });
+                
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
         });
-        let mut statements: Vec<TokenStream> = c.clone().function.body.expect("Invalid statement").stmts.iter().map(|s| {
-            let s = s.clone().expect_expr().expr;
-            if let Some(c) = s.as_call() {
-                let callee = c.callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
-                let acc = custom_accounts.get_mut(&callee).expect("Invalid account name");
 
-            } else if let Some(a) = s.as_assign() {
-            } else {
-                panic!("Invalid expression type!")
-            }
-        }).collect();
-        fs::write("ast.rs", format!("{:#?}", statements)).unwrap();
+        
+        // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.args = ix_arguments;
         ix
     }
+
+    // 2 instructions cant have same context
+    // fn block yet to be done
 
     pub fn to_tokens(&self) -> TokenStream {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
@@ -159,9 +191,9 @@ impl ProgramInstruction {
         let args:Vec<TokenStream> = self.args.iter().map(|a| {
             let name = Ident::new(&a.name, proc_macro2::Span::call_site());
             let of_type = &a.of_type;
-            quote!{ #name: #of_type }        
+            quote!{ #name: #of_type }
         }).collect();
-        // println!(args);      
+        // println!(args);
         quote!{
             pub fn #name (ctx: Context<#ctx_name>, #(#args)*) -> Result<()> {}
         }
@@ -200,7 +232,7 @@ impl ProgramAccount {
             _ => panic!("Custom accounts must extend Account type"),
         }
         let name: String = interface.id.sym.to_string();
-        println!("{}", &name);
+        // println!("{}", &name);
         // TODO: Process fields of account
         let fields: Vec<ProgramAccountField> = interface.body.body.iter().map(|f | {
             let field = f.clone().ts_property_signature().expect("Invalid property");
@@ -230,7 +262,7 @@ impl ProgramAccount {
         // Parse fields
         let fields: Vec<_> = self.fields.iter().map(|field| {
             let field_name = Ident::new(&field.name, proc_macro2::Span::call_site());
-            let field_type: Ident = Ident::new(field.of_type.split("#").next().unwrap_or(""), proc_macro2::Span::call_site());
+            let field_type: Ident = Ident::new(field.of_type.split("#").next().unwrap_or(""), proc_macro2::Span::call_site()); // dont understand why we are splitting it with "#"
             quote! { pub #field_name: #field_type }
         }).collect();
 

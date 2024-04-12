@@ -1,0 +1,952 @@
+start : Expr(
+    ExprStmt {
+        span: Span {
+            lo: BytePos(
+                268,
+            ),
+            hi: BytePos(
+                316,
+            ),
+            ctxt: #0,
+        },
+        expr: Call(
+            CallExpr {
+                span: Span {
+                    lo: BytePos(
+                        268,
+                    ),
+                    hi: BytePos(
+                        316,
+                    ),
+                    ctxt: #0,
+                },
+                callee: Expr(
+                    Member(
+                        MemberExpr {
+                            span: Span {
+                                lo: BytePos(
+                                    268,
+                                ),
+                                hi: BytePos(
+                                    314,
+                                ),
+                                ctxt: #0,
+                            },
+                            obj: Call(
+                                CallExpr {
+                                    span: Span {
+                                        lo: BytePos(
+                                            268,
+                                        ),
+                                        hi: BytePos(
+                                            296,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    callee: Expr(
+                                        Member(
+                                            MemberExpr {
+                                                span: Span {
+                                                    lo: BytePos(
+                                                        268,
+                                                    ),
+                                                    hi: BytePos(
+                                                        280,
+                                                    ),
+                                                    ctxt: #0,
+                                                },
+                                                obj: Ident(
+                                                    Ident {
+                                                        span: Span {
+                                                            lo: BytePos(
+                                                                268,
+                                                            ),
+                                                            hi: BytePos(
+                                                                273,
+                                                            ),
+                                                            ctxt: #0,
+                                                        },
+                                                        sym: "state",
+                                                        optional: false,
+                                                    },
+                                                ),
+                                                prop: Ident(
+                                                    Ident {
+                                                        span: Span {
+                                                            lo: BytePos(
+                                                                274,
+                                                            ),
+                                                            hi: BytePos(
+                                                                280,
+                                                            ),
+                                                            ctxt: #0,
+                                                        },
+                                                        sym: "derive",
+                                                        optional: false,
+                                                    },
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                    args: [
+                                        ExprOrSpread {
+                                            spread: None,
+                                            expr: Array(
+                                                ArrayLit {
+                                                    span: Span {
+                                                        lo: BytePos(
+                                                            281,
+                                                        ),
+                                                        hi: BytePos(
+                                                            295,
+                                                        ),
+                                                        ctxt: #0,
+                                                    },
+                                                    elems: [
+                                                        Some(
+                                                            ExprOrSpread {
+                                                                spread: None,
+                                                                expr: Lit(
+                                                                    Str(
+                                                                        Str {
+                                                                            span: Span {
+                                                                                lo: BytePos(
+                                                                                    282,
+                                                                                ),
+                                                                                hi: BytePos(
+                                                                                    288,
+                                                                                ),
+                                                                                ctxt: #0,
+                                                                            },
+                                                                            value: "vote",
+                                                                            raw: Some(
+                                                                                "\"vote\"",
+                                                                            ),
+                                                                        },
+                                                                    ),
+                                                                ),
+                                                            },
+                                                        ),
+                                                        Some(
+                                                            ExprOrSpread {
+                                                                spread: None,
+                                                                expr: Ident(
+                                                                    Ident {
+                                                                        span: Span {
+                                                                            lo: BytePos(
+                                                                                290,
+                                                                            ),
+                                                                            hi: BytePos(
+                                                                                294,
+                                                                            ),
+                                                                            ctxt: #0,
+                                                                        },
+                                                                        sym: "hash",
+                                                                        optional: false,
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ],
+                                                },
+                                            ),
+                                        },
+                                    ],
+                                    type_args: None,
+                                },
+                            ),
+                            prop: Ident(
+                                Ident {
+                                    span: Span {
+                                        lo: BytePos(
+                                            310,
+                                        ),
+                                        hi: BytePos(
+                                            314,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    sym: "init",
+                                    optional: false,
+                                },
+                            ),
+                        },
+                    ),
+                ),
+                args: [],
+                type_args: None,
+            },
+        ),
+    },
+)
+start : Expr(
+    ExprStmt {
+        span: Span {
+            lo: BytePos(
+                325,
+            ),
+            hi: BytePos(
+                348,
+            ),
+            ctxt: #0,
+        },
+        expr: Assign(
+            AssignExpr {
+                span: Span {
+                    lo: BytePos(
+                        325,
+                    ),
+                    hi: BytePos(
+                        348,
+                    ),
+                    ctxt: #0,
+                },
+                op: "=",
+                left: Pat(
+                    Expr(
+                        Member(
+                            MemberExpr {
+                                span: Span {
+                                    lo: BytePos(
+                                        325,
+                                    ),
+                                    hi: BytePos(
+                                        335,
+                                    ),
+                                    ctxt: #0,
+                                },
+                                obj: Ident(
+                                    Ident {
+                                        span: Span {
+                                            lo: BytePos(
+                                                325,
+                                            ),
+                                            hi: BytePos(
+                                                330,
+                                            ),
+                                            ctxt: #0,
+                                        },
+                                        sym: "state",
+                                        optional: false,
+                                    },
+                                ),
+                                prop: Ident(
+                                    Ident {
+                                        span: Span {
+                                            lo: BytePos(
+                                                331,
+                                            ),
+                                            hi: BytePos(
+                                                335,
+                                            ),
+                                            ctxt: #0,
+                                        },
+                                        sym: "vote",
+                                        optional: false,
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ),
+                right: New(
+                    NewExpr {
+                        span: Span {
+                            lo: BytePos(
+                                338,
+                            ),
+                            hi: BytePos(
+                                348,
+                            ),
+                            ctxt: #0,
+                        },
+                        callee: Ident(
+                            Ident {
+                                span: Span {
+                                    lo: BytePos(
+                                        342,
+                                    ),
+                                    hi: BytePos(
+                                        345,
+                                    ),
+                                    ctxt: #0,
+                                },
+                                sym: "i64",
+                                optional: false,
+                            },
+                        ),
+                        args: Some(
+                            [
+                                ExprOrSpread {
+                                    spread: None,
+                                    expr: Lit(
+                                        Num(
+                                            Number {
+                                                span: Span {
+                                                    lo: BytePos(
+                                                        346,
+                                                    ),
+                                                    hi: BytePos(
+                                                        347,
+                                                    ),
+                                                    ctxt: #0,
+                                                },
+                                                value: 0.0,
+                                                raw: Some(
+                                                    "0",
+                                                ),
+                                            },
+                                        ),
+                                    ),
+                                },
+                            ],
+                        ),
+                        type_args: None,
+                    },
+                ),
+            },
+        ),
+    },
+)
+start : Expr(
+    ExprStmt {
+        span: Span {
+            lo: BytePos(
+                428,
+            ),
+            hi: BytePos(
+                456,
+            ),
+            ctxt: #0,
+        },
+        expr: Call(
+            CallExpr {
+                span: Span {
+                    lo: BytePos(
+                        428,
+                    ),
+                    hi: BytePos(
+                        456,
+                    ),
+                    ctxt: #0,
+                },
+                callee: Expr(
+                    Member(
+                        MemberExpr {
+                            span: Span {
+                                lo: BytePos(
+                                    428,
+                                ),
+                                hi: BytePos(
+                                    440,
+                                ),
+                                ctxt: #0,
+                            },
+                            obj: Ident(
+                                Ident {
+                                    span: Span {
+                                        lo: BytePos(
+                                            428,
+                                        ),
+                                        hi: BytePos(
+                                            433,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    sym: "state",
+                                    optional: false,
+                                },
+                            ),
+                            prop: Ident(
+                                Ident {
+                                    span: Span {
+                                        lo: BytePos(
+                                            434,
+                                        ),
+                                        hi: BytePos(
+                                            440,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    sym: "derive",
+                                    optional: false,
+                                },
+                            ),
+                        },
+                    ),
+                ),
+                args: [
+                    ExprOrSpread {
+                        spread: None,
+                        expr: Array(
+                            ArrayLit {
+                                span: Span {
+                                    lo: BytePos(
+                                        441,
+                                    ),
+                                    hi: BytePos(
+                                        455,
+                                    ),
+                                    ctxt: #0,
+                                },
+                                elems: [
+                                    Some(
+                                        ExprOrSpread {
+                                            spread: None,
+                                            expr: Lit(
+                                                Str(
+                                                    Str {
+                                                        span: Span {
+                                                            lo: BytePos(
+                                                                442,
+                                                            ),
+                                                            hi: BytePos(
+                                                                448,
+                                                            ),
+                                                            ctxt: #0,
+                                                        },
+                                                        value: "vote",
+                                                        raw: Some(
+                                                            "\"vote\"",
+                                                        ),
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                    Some(
+                                        ExprOrSpread {
+                                            spread: None,
+                                            expr: Ident(
+                                                Ident {
+                                                    span: Span {
+                                                        lo: BytePos(
+                                                            450,
+                                                        ),
+                                                        hi: BytePos(
+                                                            454,
+                                                        ),
+                                                        ctxt: #0,
+                                                    },
+                                                    sym: "hash",
+                                                    optional: false,
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                ],
+                type_args: None,
+            },
+        ),
+    },
+)
+start : Expr(
+    ExprStmt {
+        span: Span {
+            lo: BytePos(
+                465,
+            ),
+            hi: BytePos(
+                495,
+            ),
+            ctxt: #0,
+        },
+        expr: Assign(
+            AssignExpr {
+                span: Span {
+                    lo: BytePos(
+                        465,
+                    ),
+                    hi: BytePos(
+                        495,
+                    ),
+                    ctxt: #0,
+                },
+                op: "=",
+                left: Pat(
+                    Expr(
+                        Member(
+                            MemberExpr {
+                                span: Span {
+                                    lo: BytePos(
+                                        465,
+                                    ),
+                                    hi: BytePos(
+                                        475,
+                                    ),
+                                    ctxt: #0,
+                                },
+                                obj: Ident(
+                                    Ident {
+                                        span: Span {
+                                            lo: BytePos(
+                                                465,
+                                            ),
+                                            hi: BytePos(
+                                                470,
+                                            ),
+                                            ctxt: #0,
+                                        },
+                                        sym: "state",
+                                        optional: false,
+                                    },
+                                ),
+                                prop: Ident(
+                                    Ident {
+                                        span: Span {
+                                            lo: BytePos(
+                                                471,
+                                            ),
+                                            hi: BytePos(
+                                                475,
+                                            ),
+                                            ctxt: #0,
+                                        },
+                                        sym: "vote",
+                                        optional: false,
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ),
+                right: Call(
+                    CallExpr {
+                        span: Span {
+                            lo: BytePos(
+                                478,
+                            ),
+                            hi: BytePos(
+                                495,
+                            ),
+                            ctxt: #0,
+                        },
+                        callee: Expr(
+                            Member(
+                                MemberExpr {
+                                    span: Span {
+                                        lo: BytePos(
+                                            478,
+                                        ),
+                                        hi: BytePos(
+                                            492,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    obj: Member(
+                                        MemberExpr {
+                                            span: Span {
+                                                lo: BytePos(
+                                                    478,
+                                                ),
+                                                hi: BytePos(
+                                                    488,
+                                                ),
+                                                ctxt: #0,
+                                            },
+                                            obj: Ident(
+                                                Ident {
+                                                    span: Span {
+                                                        lo: BytePos(
+                                                            478,
+                                                        ),
+                                                        hi: BytePos(
+                                                            483,
+                                                        ),
+                                                        ctxt: #0,
+                                                    },
+                                                    sym: "state",
+                                                    optional: false,
+                                                },
+                                            ),
+                                            prop: Ident(
+                                                Ident {
+                                                    span: Span {
+                                                        lo: BytePos(
+                                                            484,
+                                                        ),
+                                                        hi: BytePos(
+                                                            488,
+                                                        ),
+                                                        ctxt: #0,
+                                                    },
+                                                    sym: "vote",
+                                                    optional: false,
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    prop: Ident(
+                                        Ident {
+                                            span: Span {
+                                                lo: BytePos(
+                                                    489,
+                                                ),
+                                                hi: BytePos(
+                                                    492,
+                                                ),
+                                                ctxt: #0,
+                                            },
+                                            sym: "add",
+                                            optional: false,
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        args: [
+                            ExprOrSpread {
+                                spread: None,
+                                expr: Lit(
+                                    Num(
+                                        Number {
+                                            span: Span {
+                                                lo: BytePos(
+                                                    493,
+                                                ),
+                                                hi: BytePos(
+                                                    494,
+                                                ),
+                                                ctxt: #0,
+                                            },
+                                            value: 1.0,
+                                            raw: Some(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                ),
+                            },
+                        ],
+                        type_args: None,
+                    },
+                ),
+            },
+        ),
+    },
+)
+start : Expr(
+    ExprStmt {
+        span: Span {
+            lo: BytePos(
+                577,
+            ),
+            hi: BytePos(
+                605,
+            ),
+            ctxt: #0,
+        },
+        expr: Call(
+            CallExpr {
+                span: Span {
+                    lo: BytePos(
+                        577,
+                    ),
+                    hi: BytePos(
+                        605,
+                    ),
+                    ctxt: #0,
+                },
+                callee: Expr(
+                    Member(
+                        MemberExpr {
+                            span: Span {
+                                lo: BytePos(
+                                    577,
+                                ),
+                                hi: BytePos(
+                                    589,
+                                ),
+                                ctxt: #0,
+                            },
+                            obj: Ident(
+                                Ident {
+                                    span: Span {
+                                        lo: BytePos(
+                                            577,
+                                        ),
+                                        hi: BytePos(
+                                            582,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    sym: "state",
+                                    optional: false,
+                                },
+                            ),
+                            prop: Ident(
+                                Ident {
+                                    span: Span {
+                                        lo: BytePos(
+                                            583,
+                                        ),
+                                        hi: BytePos(
+                                            589,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    sym: "derive",
+                                    optional: false,
+                                },
+                            ),
+                        },
+                    ),
+                ),
+                args: [
+                    ExprOrSpread {
+                        spread: None,
+                        expr: Array(
+                            ArrayLit {
+                                span: Span {
+                                    lo: BytePos(
+                                        590,
+                                    ),
+                                    hi: BytePos(
+                                        604,
+                                    ),
+                                    ctxt: #0,
+                                },
+                                elems: [
+                                    Some(
+                                        ExprOrSpread {
+                                            spread: None,
+                                            expr: Lit(
+                                                Str(
+                                                    Str {
+                                                        span: Span {
+                                                            lo: BytePos(
+                                                                591,
+                                                            ),
+                                                            hi: BytePos(
+                                                                597,
+                                                            ),
+                                                            ctxt: #0,
+                                                        },
+                                                        value: "vote",
+                                                        raw: Some(
+                                                            "\"vote\"",
+                                                        ),
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                    Some(
+                                        ExprOrSpread {
+                                            spread: None,
+                                            expr: Ident(
+                                                Ident {
+                                                    span: Span {
+                                                        lo: BytePos(
+                                                            599,
+                                                        ),
+                                                        hi: BytePos(
+                                                            603,
+                                                        ),
+                                                        ctxt: #0,
+                                                    },
+                                                    sym: "hash",
+                                                    optional: false,
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                ],
+                type_args: None,
+            },
+        ),
+    },
+)
+start : Expr(
+    ExprStmt {
+        span: Span {
+            lo: BytePos(
+                614,
+            ),
+            hi: BytePos(
+                644,
+            ),
+            ctxt: #0,
+        },
+        expr: Assign(
+            AssignExpr {
+                span: Span {
+                    lo: BytePos(
+                        614,
+                    ),
+                    hi: BytePos(
+                        644,
+                    ),
+                    ctxt: #0,
+                },
+                op: "=",
+                left: Pat(
+                    Expr(
+                        Member(
+                            MemberExpr {
+                                span: Span {
+                                    lo: BytePos(
+                                        614,
+                                    ),
+                                    hi: BytePos(
+                                        624,
+                                    ),
+                                    ctxt: #0,
+                                },
+                                obj: Ident(
+                                    Ident {
+                                        span: Span {
+                                            lo: BytePos(
+                                                614,
+                                            ),
+                                            hi: BytePos(
+                                                619,
+                                            ),
+                                            ctxt: #0,
+                                        },
+                                        sym: "state",
+                                        optional: false,
+                                    },
+                                ),
+                                prop: Ident(
+                                    Ident {
+                                        span: Span {
+                                            lo: BytePos(
+                                                620,
+                                            ),
+                                            hi: BytePos(
+                                                624,
+                                            ),
+                                            ctxt: #0,
+                                        },
+                                        sym: "vote",
+                                        optional: false,
+                                    },
+                                ),
+                            },
+                        ),
+                    ),
+                ),
+                right: Call(
+                    CallExpr {
+                        span: Span {
+                            lo: BytePos(
+                                627,
+                            ),
+                            hi: BytePos(
+                                644,
+                            ),
+                            ctxt: #0,
+                        },
+                        callee: Expr(
+                            Member(
+                                MemberExpr {
+                                    span: Span {
+                                        lo: BytePos(
+                                            627,
+                                        ),
+                                        hi: BytePos(
+                                            641,
+                                        ),
+                                        ctxt: #0,
+                                    },
+                                    obj: Member(
+                                        MemberExpr {
+                                            span: Span {
+                                                lo: BytePos(
+                                                    627,
+                                                ),
+                                                hi: BytePos(
+                                                    637,
+                                                ),
+                                                ctxt: #0,
+                                            },
+                                            obj: Ident(
+                                                Ident {
+                                                    span: Span {
+                                                        lo: BytePos(
+                                                            627,
+                                                        ),
+                                                        hi: BytePos(
+                                                            632,
+                                                        ),
+                                                        ctxt: #0,
+                                                    },
+                                                    sym: "state",
+                                                    optional: false,
+                                                },
+                                            ),
+                                            prop: Ident(
+                                                Ident {
+                                                    span: Span {
+                                                        lo: BytePos(
+                                                            633,
+                                                        ),
+                                                        hi: BytePos(
+                                                            637,
+                                                        ),
+                                                        ctxt: #0,
+                                                    },
+                                                    sym: "vote",
+                                                    optional: false,
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    prop: Ident(
+                                        Ident {
+                                            span: Span {
+                                                lo: BytePos(
+                                                    638,
+                                                ),
+                                                hi: BytePos(
+                                                    641,
+                                                ),
+                                                ctxt: #0,
+                                            },
+                                            sym: "sub",
+                                            optional: false,
+                                        },
+                                    ),
+                                },
+                            ),
+                        ),
+                        args: [
+                            ExprOrSpread {
+                                spread: None,
+                                expr: Lit(
+                                    Num(
+                                        Number {
+                                            span: Span {
+                                                lo: BytePos(
+                                                    642,
+                                                ),
+                                                hi: BytePos(
+                                                    643,
+                                                ),
+                                                ctxt: #0,
+                                            },
+                                            value: 1.0,
+                                            raw: Some(
+                                                "1",
+                                            ),
+                                        },
+                                    ),
+                                ),
+                            },
+                        ],
+                        type_args: None,
+                    },
+                ),
+            },
+        ),
+    },
+)
