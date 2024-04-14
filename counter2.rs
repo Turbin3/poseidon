@@ -7,22 +7,23 @@ pub mod VoteProgram {
     pub fn downvote(ctx: Context<DownvoteContext>, hash: Vec<u8>) -> Result<()> {}
 }
 #[derive(Accounts)]
-pub struct InitializeContext {
-    #[account(init)]
-    pub state: Account<VoteState>,
+pub struct InitializeContext<'info> {
+    #[account(init, payer = "user", bump)]
+    pub state: Account<'info, VoteState>,
+    #[account()]
+    pub user: Signer<'info>,
 }
 #[derive(Accounts)]
-pub struct UpvoteContext {
+pub struct UpvoteContext<'info> {
     #[account()]
-    pub state: Account<VoteState>,
+    pub state: Account<'info, VoteState>,
 }
 #[derive(Accounts)]
-pub struct DownvoteContext {
+pub struct DownvoteContext<'info> {
     #[account()]
-    pub state: Account<VoteState>,
+    pub state: Account<'info, VoteState>,
 }
 #[account]
 pub struct VoteState {
     pub vote: i64,
-    pub bump: u8,
 }

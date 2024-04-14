@@ -71,6 +71,7 @@ pub fn rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
         "isize" => Ok(quote!{ isize }),
         "boolean" => Ok(quote!{ bool }),
         "Uint8Array" => Ok(quote!{ Vec<u8> }),
+        // "Signer" => Ok(quote!{Signer}),
         _ => Err(PoseidonError::InvalidType(str.to_string()))?
     }
 }

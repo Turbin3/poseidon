@@ -1,6 +1,7 @@
 use core::panic;
 use std::{collections::{HashSet, HashMap}, fs};
 use convert_case::{Case, Casing};
+use swc_common::util::move_map::MoveMap;
 use swc_ecma_ast::{BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, Lit, Stmt, TsExprWithTypeArgs, TsInterfaceDecl};
 use quote::quote;
 use proc_macro2::{Ident, TokenStream, Literal};
@@ -16,7 +17,8 @@ pub struct InstructionAccount {
     pub is_init: bool,
     pub is_close: bool,
     pub seeds: Option<String>,
-    pub bump: Option<u8>
+    pub bump: Option<u8>,
+    pub payer: Option<String>
 }
 
 impl InstructionAccount {
@@ -29,13 +31,17 @@ impl InstructionAccount {
             is_close: false,
             is_init: false,
             seeds: None,
-            bump: None
+            bump: None,
+            payer: None
         }
     }
 
     pub fn to_tokens(&self) -> TokenStream {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let of_type = &self.of_type;
+        let payer = self.payer.clone();
+        // print!("{:#?}", payer);
+
         let seeds = match &self.seeds {
             Some(s) => {
                 let seeds = Ident::new(&s, proc_macro2::Span::call_site());
@@ -47,25 +53,26 @@ impl InstructionAccount {
         };
 
         // need to differentiate between first initiation of bump so we can retrive from existing acc incase bumps are stored in diff acc
-        let bump = match self.bump {
-            Some(b) => {
-                let bump = Ident::new(&b.to_string(), proc_macro2::Span::call_site());
-                quote!{
-                    bump = #bump
-                }
-            },
-            None => quote!{}
-        };
+        // let bump = match self.bump {
+        //     Some(b) => {
+        //         let bump = Ident::new(&b.to_string(), proc_macro2::Span::call_site());
+        //         quote!{
+        //             bump = #bump
+        //         }
+        //     },
+        //     None => quote!{}
+        // };
+        
         // need to also declare payer in case of init
         let init = match self.is_init {
-            true => quote!{init,},
+            true => quote!{init, payer = #payer, bump},
             false => quote!{}
         };
         quote!(
             #[account(
                 #init
                 #seeds
-                #bump
+                // #bump
                 
             )]
             pub #name: #of_type,
@@ -85,7 +92,7 @@ pub struct ProgramInstruction {
     pub accounts: Vec<InstructionAccount>,
     pub args: Vec<InstructionArgument>,
     pub body: String,
-    pub has_signer: bool,
+    pub signer: Option<String>,
     pub uses_system_program: bool,
     pub uses_token_program: bool,
     pub uses_associated_token_program: bool,    
@@ -98,7 +105,7 @@ impl ProgramInstruction {
             accounts: vec![],
             args: vec![],
             body: "".to_string(),
-            has_signer: false,
+            signer: None,
             uses_system_program: false,
             uses_token_program: false,
             uses_associated_token_program: false,
@@ -129,13 +136,19 @@ impl ProgramInstruction {
                 })    
             } else if STANDARD_ACCOUNT_TYPES.contains(&of_type.as_str()) {
                 if of_type == "Signer" {
-                    ix.has_signer = true;
+                    ix.signer = Some(name.clone());
+                    println!("{:#?}", ix.signer);
+                    ix_accounts.insert(name.clone(), InstructionAccount::new(
+                        name.clone(),
+                        quote!{ Signer<'info> },
+                        optional
+                    ));
                 }
             } else if custom_accounts.contains_key(&of_type) {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
                 ix_accounts.insert(name.clone(), InstructionAccount::new(
                     name.clone(),
-                    quote!{ Account<#ty> },
+                    quote!{ Account<'info, #ty> },
                     optional
                 ));
                 c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
@@ -157,8 +170,24 @@ impl ProgramInstruction {
                             let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                         
                             if prop == "derive"{
+                                // for elem in &parentcall.args[0].expr.clone().expect_array().elems {
+                                //     if let Some(a) = elem {
+                                //         match a.expr.expect_lit() {
+                                //             (Lit::Str(str_lit)) => {
+                                //                 self.elements.push(str_lit.value.to_string())
+                                //             }
+                                //             _ => {}
+                                //         }
+                                //     };
+                                // }
+                                
                                 if chaincall1prop == "init" {
                                     (*cur_ix_acc).is_init = true;
+                                    if let Some(payer) = ix.signer.clone() {
+                                        (*cur_ix_acc).payer= Some(payer);
+
+                                    }
+                                    
                                 }
                             }
 
@@ -179,6 +208,7 @@ impl ProgramInstruction {
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.args = ix_arguments;
+        // println!("{:#?}", ix.has_signer);
         ix
     }
 
@@ -204,7 +234,7 @@ impl ProgramInstruction {
         let accounts: Vec<TokenStream> = self.accounts.iter().map(|a| a.to_tokens()).collect();
         quote!{
             #[derive(Accounts)]
-            pub struct #ctx_name {
+            pub struct #ctx_name<'info> {
                 #(#accounts)*
             }
         }
