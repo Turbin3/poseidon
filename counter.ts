@@ -3,7 +3,7 @@ import { Account, Pubkey, Result, i64, u8, Signer } from "@turbin3/poseidon";
 export default class VoteProgram {
     static PROGRAM_ID = new Pubkey("HC2oqz2p6DEWfrahenqdq2moUcga9c9biqRBcdK3XKU1");
 
-    public initialize(user: Signer, state: VoteState, hash: Uint8Array): Result {
+    public initialize(state: VoteState, hash: Uint8Array, user: Signer): Result {
         state.derive(["vote", hash])
             .init()
         state.vote = new i64(0)

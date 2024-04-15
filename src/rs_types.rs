@@ -151,6 +151,66 @@ impl ProgramInstruction {
                     quote!{ Account<'info, #ty> },
                     optional
                 ));
+                // c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
+                //     // println!("start : {:#?}", s);
+                //     let s = s.clone().expect_expr().expr;
+                //     if let Some(c) = s.as_call() {
+                        
+                //         let chaincall1prop = c.clone().callee.expect_expr().expect_member().prop.expect_ident().sym;
+        
+        
+                //         // let childcall1 = parentcall.callee.clone().expect_expr().expect_member();
+
+                //         if let Some(parentcall) = c.clone().callee.expect_expr().expect_member().obj.as_call() {
+                //             let members = parentcall.callee.clone().expect_expr().expect_member();
+                //             let obj = members.obj.expect_ident().sym;
+                //             let prop = members.prop.expect_ident().sym;
+                //             println!("{}",obj);
+                //             println!("{}",prop);
+                //             let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                        
+                //             if prop == "derive"{
+                //                 // for elem in &parentcall.args[0].expr.clone().expect_array().elems {
+                //                 //     if let Some(a) = elem {
+                //                 //         match a.expr.expect_lit() {
+                //                 //             (Lit::Str(str_lit)) => {
+                //                 //                 self.elements.push(str_lit.value.to_string())
+                //                 //             }
+                //                 //             _ => {}
+                //                 //         }
+                //                 //     };
+                //                 // }
+                                
+                //                 if chaincall1prop == "init" {
+                //                     (*cur_ix_acc).is_init = true;
+                //                     if let Some(payer) = ix.signer.clone() {
+                //                         (*cur_ix_acc).payer= Some(payer);
+
+                //                     }
+                                    
+                //                 }
+                //             }
+
+                //             println!("{:#?}", cur_ix_acc);
+                //         }
+                //     // let args = parentcall.args.0.
+                        
+                //     }
+        
+                // });
+
+
+            } else {
+                panic!("Invalid variable or account type: {}", of_type);
+            }
+        });
+
+        c.function.params.iter().for_each(|p| {
+            let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
+            let name = id.sym.to_string();
+            let ident = type_ann.expect("Invalid instruction argument").type_ann.expect_ts_type_ref().type_name.expect_ident();
+            let of_type = ident.sym.to_string();
+            if custom_accounts.contains_key(&of_type) {
                 c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
                     // println!("start : {:#?}", s);
                     let s = s.clone().expect_expr().expr;
@@ -170,16 +230,20 @@ impl ProgramInstruction {
                             let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                         
                             if prop == "derive"{
-                                // for elem in &parentcall.args[0].expr.clone().expect_array().elems {
-                                //     if let Some(a) = elem {
-                                //         match a.expr.expect_lit() {
-                                //             (Lit::Str(str_lit)) => {
-                                //                 self.elements.push(str_lit.value.to_string())
-                                //             }
-                                //             _ => {}
-                                //         }
-                                //     };
-                                // }
+                                for elem in &parentcall.args[0].expr.clone().expect_array().elems {
+                                    let mut seeds: Vec<&[u8]> = Vec::new();
+                                    if let Some(a) = elem {
+                                        match *(a.expr.clone()) {
+                                            Expr::Lit(Lit::Str(seedstr)) => {
+                                                seeds.push(seedstr.value.to_string().as_bytes());
+                                            }
+                                            Expr::Ident(ident_Str) => {
+                                                // ident_Str.sym
+                                            }
+                                            _ => {}
+                                        }
+                                    };
+                                }
                                 
                                 if chaincall1prop == "init" {
                                     (*cur_ix_acc).is_init = true;
@@ -198,12 +262,10 @@ impl ProgramInstruction {
                     }
         
                 });
-                
-            } else {
-                panic!("Invalid variable or account type: {}", of_type);
             }
-        });
 
+
+        });
         
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
