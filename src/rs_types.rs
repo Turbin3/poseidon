@@ -39,15 +39,22 @@ impl InstructionAccount {
     pub fn to_tokens(&self) -> TokenStream {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let of_type = &self.of_type;
-        let payer = self.payer.clone();
         // print!("{:#?}", payer);
+        let payer = match &self.payer {
+            Some(s) => {
+                let payer = Ident::new(&s, proc_macro2::Span::call_site());
+                quote!(
+                    payer = #payer
+                )
+            },
+            None => quote!()
+
+        };
 
         let seeds = match &self.seeds {
             Some(s) => {
                 let seeds = Ident::new(&s, proc_macro2::Span::call_site());
-                quote!{
-                    seeds = #seeds
-                }
+                quote!{seeds = #seeds}
             },
             None => quote!{}
         };
@@ -65,7 +72,7 @@ impl InstructionAccount {
         
         // need to also declare payer in case of init
         let init = match self.is_init {
-            true => quote!{init, payer = #payer, bump},
+            true => quote!{init, #payer, bump},
             false => quote!{}
         };
         quote!(
@@ -231,11 +238,11 @@ impl ProgramInstruction {
                         
                             if prop == "derive"{
                                 for elem in &parentcall.args[0].expr.clone().expect_array().elems {
-                                    let mut seeds: Vec<&[u8]> = Vec::new();
+                                    let mut seeds: Vec<Vec<u8>> = Vec::new();
                                     if let Some(a) = elem {
                                         match *(a.expr.clone()) {
                                             Expr::Lit(Lit::Str(seedstr)) => {
-                                                seeds.push(seedstr.value.to_string().as_bytes());
+                                                seeds.push(seedstr.value.to_string().as_bytes().to_vec());
                                             }
                                             Expr::Ident(ident_Str) => {
                                                 // ident_Str.sym
