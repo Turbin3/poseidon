@@ -8,20 +8,20 @@ pub mod VoteProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
-    # [account (init , payer = user , bump seeds = [b "vote" , hash])]
-    pub state: Account<'info, VoteState>,
     #[account()]
     pub user: Signer<'info>,
+    # [account (init , payer = user , bump seeds = [b "vote" , hash])]
+    pub state: Account<'info, VoteState>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct UpvoteContext<'info> {
-    #[account()]
+    # [account (seeds = [b "vote" , hash])]
     pub state: Account<'info, VoteState>,
 }
 #[derive(Accounts)]
 pub struct DownvoteContext<'info> {
-    #[account()]
+    # [account (seeds = [b "vote" , hash])]
     pub state: Account<'info, VoteState>,
 }
 #[account]
