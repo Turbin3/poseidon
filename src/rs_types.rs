@@ -5,6 +5,7 @@ use swc_common::util::move_map::MoveMap;
 use swc_ecma_ast::{BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, Lit, Stmt, TsExprWithTypeArgs, TsInterfaceDecl};
 use quote::quote;
 use proc_macro2::{Ident, TokenStream, Literal};
+use swc_ecma_parser::token::Token;
 
 use crate::{ts_types::{STANDARD_TYPES, rs_type_from_str, STANDARD_ACCOUNT_TYPES}, errors::PoseidonError};
 
@@ -16,7 +17,7 @@ pub struct InstructionAccount {
     pub is_mut: bool,
     pub is_init: bool,
     pub is_close: bool,
-    pub seeds: Option<String>,
+    pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<u8>,
     pub payer: Option<String>
 }
@@ -53,11 +54,14 @@ impl InstructionAccount {
 
         let seeds = match &self.seeds {
             Some(s) => {
-                let seeds = Ident::new(&s, proc_macro2::Span::call_site());
-                quote!{seeds = #seeds}
+                println!("{:#?}", s);
+                quote!{
+                    seeds = [#(#s),*]
+                }
             },
             None => quote!{}
         };
+        // println!("{:#?} : {:#?}", self.name, seeds);
 
         // need to differentiate between first initiation of bump so we can retrive from existing acc incase bumps are stored in diff acc
         // let bump = match self.bump {
@@ -123,7 +127,7 @@ impl ProgramInstruction {
         // Get name
         let name = c.key.clone().expect_ident().sym.to_string();
         // println!("{}",name);
-        let mut ix = ProgramInstruction::new(name);
+        let mut ix: ProgramInstruction = ProgramInstruction::new(name);
         // Get accounts and args
         let mut ix_accounts: HashMap<String, InstructionAccount> = HashMap::new();
         let mut ix_arguments: Vec<InstructionArgument> = vec![];
@@ -144,7 +148,6 @@ impl ProgramInstruction {
             } else if STANDARD_ACCOUNT_TYPES.contains(&of_type.as_str()) {
                 if of_type == "Signer" {
                     ix.signer = Some(name.clone());
-                    println!("{:#?}", ix.signer);
                     ix_accounts.insert(name.clone(), InstructionAccount::new(
                         name.clone(),
                         quote!{ Signer<'info> },
@@ -158,55 +161,6 @@ impl ProgramInstruction {
                     quote!{ Account<'info, #ty> },
                     optional
                 ));
-                // c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
-                //     // println!("start : {:#?}", s);
-                //     let s = s.clone().expect_expr().expr;
-                //     if let Some(c) = s.as_call() {
-                        
-                //         let chaincall1prop = c.clone().callee.expect_expr().expect_member().prop.expect_ident().sym;
-        
-        
-                //         // let childcall1 = parentcall.callee.clone().expect_expr().expect_member();
-
-                //         if let Some(parentcall) = c.clone().callee.expect_expr().expect_member().obj.as_call() {
-                //             let members = parentcall.callee.clone().expect_expr().expect_member();
-                //             let obj = members.obj.expect_ident().sym;
-                //             let prop = members.prop.expect_ident().sym;
-                //             println!("{}",obj);
-                //             println!("{}",prop);
-                //             let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                        
-                //             if prop == "derive"{
-                //                 // for elem in &parentcall.args[0].expr.clone().expect_array().elems {
-                //                 //     if let Some(a) = elem {
-                //                 //         match a.expr.expect_lit() {
-                //                 //             (Lit::Str(str_lit)) => {
-                //                 //                 self.elements.push(str_lit.value.to_string())
-                //                 //             }
-                //                 //             _ => {}
-                //                 //         }
-                //                 //     };
-                //                 // }
-                                
-                //                 if chaincall1prop == "init" {
-                //                     (*cur_ix_acc).is_init = true;
-                //                     if let Some(payer) = ix.signer.clone() {
-                //                         (*cur_ix_acc).payer= Some(payer);
-
-                //                     }
-                                    
-                //                 }
-                //             }
-
-                //             println!("{:#?}", cur_ix_acc);
-                //         }
-                //     // let args = parentcall.args.0.
-                        
-                //     }
-        
-                // });
-
-
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
@@ -232,27 +186,43 @@ impl ProgramInstruction {
                             let members = parentcall.callee.clone().expect_expr().expect_member();
                             let obj = members.obj.expect_ident().sym;
                             let prop = members.prop.expect_ident().sym;
-                            println!("{}",obj);
-                            println!("{}",prop);
                             let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                         
                             if prop == "derive"{
-                                for elem in &parentcall.args[0].expr.clone().expect_array().elems {
-                                    let mut seeds: Vec<Vec<u8>> = Vec::new();
+                                let mut seeds_token : Vec<TokenStream> = vec![];
+                                for elem in &parentcall.args[0].expr.clone().expect_array().elems {     
                                     if let Some(a) = elem {
                                         match *(a.expr.clone()) {
                                             Expr::Lit(Lit::Str(seedstr)) => {
-                                                seeds.push(seedstr.value.to_string().as_bytes().to_vec());
+                                                let lit_vec = seedstr.value.to_string();
+                                                seeds_token.push(
+                                                    quote!{
+                                                    b #lit_vec
+                                                    }
+                                                );
+                                                
                                             }
-                                            Expr::Ident(ident_Str) => {
-                                                // ident_Str.sym
+                                            Expr::Ident(ident_str) => {
+                                                let seed_ident = Ident::new(&ident_str.sym.to_string(), proc_macro2::Span::call_site());
+                                                seeds_token.push(
+                                                    quote!{
+                                                        #seed_ident
+                                                    }
+                                                );
+                                                
                                             }
                                             _ => {}
                                         }
                                     };
                                 }
+                                if seeds_token.len() != 0 {
+                                    (*cur_ix_acc).seeds = Some(seeds_token.clone());
+                                }
+                                
+
                                 
                                 if chaincall1prop == "init" {
+                                    ix.uses_system_program = true;
                                     (*cur_ix_acc).is_init = true;
                                     if let Some(payer) = ix.signer.clone() {
                                         (*cur_ix_acc).payer= Some(payer);
@@ -262,7 +232,7 @@ impl ProgramInstruction {
                                 }
                             }
 
-                            println!("{:#?}", cur_ix_acc);
+                            // println!("{:#?} : {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
                         }
                     // let args = parentcall.args.0.
                         
@@ -277,7 +247,7 @@ impl ProgramInstruction {
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.args = ix_arguments;
-        // println!("{:#?}", ix.has_signer);
+        println!("{:#?} : {:#?}",ix.name, ix.accounts);
         ix
     }
 
@@ -300,7 +270,27 @@ impl ProgramInstruction {
 
     pub fn accounts_to_tokens(&self) -> TokenStream {
         let ctx_name = Ident::new(&format!("{}Context", &self.name.to_case(Case::Pascal)), proc_macro2::Span::call_site());
-        let accounts: Vec<TokenStream> = self.accounts.iter().map(|a| a.to_tokens()).collect();
+        let mut accounts: Vec<TokenStream> = self.accounts.iter().map(|a| a.to_tokens()).collect();
+        if self.uses_associated_token_program {
+            accounts.push(
+                quote!{
+                    pub associated_token_program: Program<'info, AssociatedToken>,
+                    
+                }
+            )
+        } else if self.uses_token_program {
+            accounts.push(
+                quote!{
+                    pub token_program: Program<'info, Token>,
+                }
+            )
+        } else if self.uses_system_program {
+            accounts.push(
+                quote!{
+                    pub system_program: Program<'info, System>,
+                }
+            )
+        }
         quote!{
             #[derive(Accounts)]
             pub struct #ctx_name<'info> {
