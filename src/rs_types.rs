@@ -54,14 +54,14 @@ impl InstructionAccount {
 
         let seeds = match &self.seeds {
             Some(s) => {
-                println!("{:#?}", s);
+                // println!("{:#?}", s);
                 quote!{
                     seeds = [#(#s),*]
                 }
             },
             None => quote!{}
         };
-        // println!("{:#?} : {:#?}", self.name, seeds);
+        println!("{:#?} : {:#?}", self.name, seeds);
 
         // need to differentiate between first initiation of bump so we can retrive from existing acc incase bumps are stored in diff acc
         // let bump = match self.bump {
@@ -76,8 +76,14 @@ impl InstructionAccount {
         
         // need to also declare payer in case of init
         let init = match self.is_init {
-            true => quote!{init, #payer, bump},
-            false => quote!{}
+            true => quote!{init, #payer, bump,},
+            false => {
+                if self.is_mut {
+                    quote!{mut,}
+                } else {
+                    quote!{}
+                }
+            }
         };
         quote!(
             #[account(
@@ -153,6 +159,9 @@ impl ProgramInstruction {
                         quote!{ Signer<'info> },
                         optional
                     ));
+                    let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                    (*cur_ix_acc).is_mut = true;
+
                 }
             } else if custom_accounts.contains_key(&of_type) {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
@@ -204,7 +213,6 @@ impl ProgramInstruction {
                         }
                         
                         if prop == "derive"{
-                            println!("derive");
                             let mut seeds_token : Vec<TokenStream> = vec![];
                             for elem in  elems{     
                                 if let Some(a) = elem {
@@ -235,87 +243,42 @@ impl ProgramInstruction {
                                 (*cur_ix_acc).seeds = Some(seeds_token.clone());
                             }
                             
-
-                            
                             if chaincall1prop == "init" {
                                 ix.uses_system_program = true;
                                 (*cur_ix_acc).is_init = true;
                                 if let Some(payer) = ix.signer.clone() {
                                     (*cur_ix_acc).payer= Some(payer);
-
+                                    
                                 }
-                                
                             }
                         }
-
                     }
-                        // if let Some(parentcall) = c.clone().callee.expect_expr().expect_member().obj.as_call() {
-                        //     let members = parentcall.callee.clone().expect_expr().expect_member();
-                        //     let obj = members.obj.expect_ident().sym;
-                        //     let prop = members.prop.expect_ident().sym;
-                        //     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                        
-                        //     if prop == "derive"{
-                        //         println!("derive");
-                        //         let mut seeds_token : Vec<TokenStream> = vec![];
-                        //         for elem in &parentcall.args[0].expr.clone().expect_array().elems {     
-                        //             if let Some(a) = elem {
-                        //                 match *(a.expr.clone()) {
-                        //                     Expr::Lit(Lit::Str(seedstr)) => {
-                        //                         let lit_vec = seedstr.value.to_string();
-                        //                         seeds_token.push(
-                        //                             quote!{
-                        //                             b #lit_vec
-                        //                             }
-                        //                         );
-                                                
-                        //                     }
-                        //                     Expr::Ident(ident_str) => {
-                        //                         let seed_ident = Ident::new(&ident_str.sym.to_string(), proc_macro2::Span::call_site());
-                        //                         seeds_token.push(
-                        //                             quote!{
-                        //                                 #seed_ident
-                        //                             }
-                        //                         );
-                                                
-                        //                     }
-                        //                     _ => {}
-                        //                 }
-                        //             };
-                        //         }
-                        //         if seeds_token.len() != 0 {
-                        //             (*cur_ix_acc).seeds = Some(seeds_token.clone());
-                        //         }
-                                
-
-                                
-                        //         if chaincall1prop == "init" {
-                        //             ix.uses_system_program = true;
-                        //             (*cur_ix_acc).is_init = true;
-                        //             if let Some(payer) = ix.signer.clone() {
-                        //                 (*cur_ix_acc).payer= Some(payer);
-
-                        //             }
-                                    
-                        //         }
-                        //     }
-
-                        //     // println!("{:#?} : {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
-                        // }
-
-                        
-                    // }
         
                 });
             }
 
 
         });
+
+        c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
+            // println!("start : {:#?}", s);
+            let s = s.clone().expect_expr().expr;
+            if let Some(a) = s.as_assign() {
+                let op = a.op;
+                let members = a.clone().left.expect_expr().expect_member();
+                let left_obj = members.obj.expect_ident().sym.to_string();
+                let left_prop = members.prop.expect_ident().sym.to_string();
+                if ix_accounts.contains_key(&left_obj){
+                    let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
+                    cur_acc.is_mut = true;
+                }
+            }
+        });
         
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.args = ix_arguments;
-        println!("{:#?} : {:#?}",ix.name, ix.accounts);
+        // println!("{:#?} : {:#?}",ix.name, ix.accounts);
         ix
     }
 

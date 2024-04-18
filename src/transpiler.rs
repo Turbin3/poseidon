@@ -50,6 +50,7 @@ pub fn transpile(module: &Module) {
             _ => panic!("Invalid syntax, cannot match: {:?}", item)
         }
     }
+    
     program.accounts = accounts.into_values().collect();
     program.custom_types = custom_types.clone();
     match program_class {
@@ -57,5 +58,6 @@ pub fn transpile(module: &Module) {
         None => panic!("Program class undefined")
     }
     let serialized_program = program.to_tokens();
-    fs::write("counter.rs", RustFmt::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
+    fs::write("counter2.rs", RustFmt::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
 }
+
