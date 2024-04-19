@@ -1,8 +1,8 @@
 use core::panic;
 use std::{collections::{HashSet, HashMap}, fs};
 use convert_case::{Case, Casing};
-use swc_common::util::move_map::MoveMap;
-use swc_ecma_ast::{BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, Lit, MemberExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, ExprOrSpread};
+use swc_common::{util::move_map::MoveMap, TypeEq};
+use swc_ecma_ast::{BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr, NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl};
 use quote::quote;
 use proc_macro2::{Ident, TokenStream, Literal};
 use swc_ecma_parser::token::Token;
@@ -51,17 +51,19 @@ impl InstructionAccount {
             None => quote!()
 
         };
+        let mut bump = quote!();
 
         let seeds = match &self.seeds {
             Some(s) => {
                 // println!("{:#?}", s);
+                bump = quote!(bump);
                 quote!{
-                    seeds = [#(#s),*]
+                    seeds = [#(#s),*],
                 }
             },
             None => quote!{}
         };
-        println!("{:#?} : {:#?}", self.name, seeds);
+        // println!("{:#?} : {:#?}", self.name, seeds);
 
         // need to differentiate between first initiation of bump so we can retrive from existing acc incase bumps are stored in diff acc
         // let bump = match self.bump {
@@ -71,12 +73,12 @@ impl InstructionAccount {
         //             bump = #bump
         //         }
         //     },
-        //     None => quote!{}
+        //     None => quote!{bump}
         // };
-        
+
         // need to also declare payer in case of init
         let init = match self.is_init {
-            true => quote!{init, #payer, bump,},
+            true => quote!{init, #payer,},
             false => {
                 if self.is_mut {
                     quote!{mut,}
@@ -89,7 +91,7 @@ impl InstructionAccount {
             #[account(
                 #init
                 #seeds
-                // #bump
+                #bump
                 
             )]
             pub #name: #of_type,
@@ -108,7 +110,7 @@ pub struct ProgramInstruction {
     pub name: String,
     pub accounts: Vec<InstructionAccount>,
     pub args: Vec<InstructionArgument>,
-    pub body: String,
+    pub body: Vec<TokenStream>,
     pub signer: Option<String>,
     pub uses_system_program: bool,
     pub uses_token_program: bool,
@@ -121,7 +123,7 @@ impl ProgramInstruction {
             name,
             accounts: vec![],
             args: vec![],
-            body: "".to_string(),
+            body: vec![],
             signer: None,
             uses_system_program: false,
             uses_token_program: false,
@@ -137,6 +139,7 @@ impl ProgramInstruction {
         // Get accounts and args
         let mut ix_accounts: HashMap<String, InstructionAccount> = HashMap::new();
         let mut ix_arguments: Vec<InstructionArgument> = vec![];
+        let mut ix_body: Vec<TokenStream> = vec![];
         c.function.params.iter().for_each(|p| {
             let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
             let name = id.sym.to_string();
@@ -188,8 +191,6 @@ impl ProgramInstruction {
                         
                         let chaincall1prop = c.clone().callee.expect_expr().expect_member().prop.expect_ident().sym;
         
-        
-                        // let childcall1 = parentcall.callee.clone().expect_expr().expect_member();
                         let parent_call = c.clone().callee.expect_expr().expect_member();
                         let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
 
@@ -218,10 +219,10 @@ impl ProgramInstruction {
                                 if let Some(a) = elem {
                                     match *(a.expr.clone()) {
                                         Expr::Lit(Lit::Str(seedstr)) => {
-                                            let lit_vec = seedstr.value.to_string();
+                                            let lit_vec = Literal::byte_string(seedstr.value.as_bytes());
                                             seeds_token.push(
                                                 quote!{
-                                                b #lit_vec
+                                                #lit_vec
                                                 }
                                             );
                                             
@@ -265,12 +266,53 @@ impl ProgramInstruction {
             let s = s.clone().expect_expr().expr;
             if let Some(a) = s.as_assign() {
                 let op = a.op;
-                let members = a.clone().left.expect_expr().expect_member();
-                let left_obj = members.obj.expect_ident().sym.to_string();
-                let left_prop = members.prop.expect_ident().sym.to_string();
+                let left_members = a.clone().left.expect_expr().expect_member();
+                let left_obj = left_members.obj.expect_ident().sym.to_string();
+                let left_prop = left_members.prop.expect_ident().sym.to_string();
                 if ix_accounts.contains_key(&left_obj){
+                    let left_obj_ident = Ident::new(&left_obj, proc_macro2::Span::call_site());
+                    let left_prop_ident = Ident::new(&left_prop, proc_macro2::Span::call_site());
                     let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
                     cur_acc.is_mut = true;
+
+                    match *(a.clone().right) {
+                        Expr::New(exp) => {
+                            let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
+                            let lit_type = exp.callee.expect_ident().sym.to_string();
+                            match right_lit {
+                                Lit::Num(num) => {
+                                    let value = num.value;
+                                    ix_body.push(quote!{
+                                        ctx.#left_obj_ident.#left_prop_ident =  #value;
+                                    });
+                                }
+                                _ => {}
+                            }
+                        },
+
+                        Expr::Call(CallExpr { span, callee, args, type_args }) => {
+                            let memebers = callee.expect_expr().expect_member();
+                            let prop = memebers.prop.expect_ident().sym.to_string();
+                            let sub_members = memebers.obj.expect_member();
+                            let sub_prop = sub_members.prop.expect_ident().sym.to_string();
+                            let sub_obj = sub_members.obj.expect_ident().sym.to_string();
+                            // match prop {
+                            //      => {
+
+                            //     }
+                            // }
+                            match *(args[0].expr.clone()) {
+                                Expr::Lit(Lit::Num(num)) => {
+                                    let value = num.value;
+                                    ix_body.push(quote!{
+                                        ctx.#left_obj_ident.#left_prop_ident =  #value;
+                                    });
+                                }
+                                _ => {}
+                            }
+                        }
+                        _ => {}
+                    }
                 }
             }
         });
@@ -382,7 +424,7 @@ impl ProgramAccount {
         // Parse fields
         let fields: Vec<_> = self.fields.iter().map(|field| {
             let field_name = Ident::new(&field.name, proc_macro2::Span::call_site());
-            let field_type: Ident = Ident::new(field.of_type.split("#").next().unwrap_or(""), proc_macro2::Span::call_site()); // dont understand why we are splitting it with "#"
+            let field_type: Ident = Ident::new(field.of_type.split("#").next().unwrap_or(""), proc_macro2::Span::call_site());
             quote! { pub #field_name: #field_type }
         }).collect();
 
@@ -461,11 +503,13 @@ impl ProgramModule {
         // let  = self.instructions.iter().map(|x| x.accounts_to_tokens() ).collect();
         let serialized_accounts: Vec<TokenStream> = self.accounts.iter().map(|x| x.to_tokens() ).collect();
         quote! {
-            use anchor::prelude::*;
+            use anchor_lang::prelude::*;
+
+            declare_id!(#program_id);
             
             #[program]
             pub mod #program_name {
-                declare_id!(#program_id);
+                
                 #(#serialized_instructions)*
             }
 
