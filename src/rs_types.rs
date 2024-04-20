@@ -367,11 +367,13 @@ impl ProgramInstruction {
             quote!{ #name: #of_type }
         }).collect();
         let body = self.body.clone();
-        let stmts = quote!{#(#body),*};
+        let stmts = quote!{#(#body)*};
         // println!("{:#?}", stmts);
         quote!{
             pub fn #name (ctx: Context<#ctx_name>, #(#args)*) -> Result<()> {
                 #stmts
+                Ok(())
+
             }
         }
     }

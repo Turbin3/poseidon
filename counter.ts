@@ -22,5 +22,5 @@ export default class VoteProgram {
 
 export interface VoteState extends Account {
     vote: i64
-    // bump: u8
+    bump: u8
 }
