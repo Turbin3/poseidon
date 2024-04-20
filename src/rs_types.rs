@@ -9,6 +9,16 @@ use swc_ecma_parser::token::Token;
 
 use crate::{ts_types::{STANDARD_TYPES, rs_type_from_str, STANDARD_ACCOUNT_TYPES}, errors::PoseidonError};
 
+enum TsType {
+    U64,
+    I64
+}
+enum TsOp {
+    ADD,
+    SUB,
+    MUL,
+    DIV
+}
 #[derive(Debug)]
 pub struct InstructionAccount {
     pub name: String,
@@ -19,7 +29,8 @@ pub struct InstructionAccount {
     pub is_close: bool,
     pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<u8>,
-    pub payer: Option<String>
+    pub payer: Option<String>,
+    pub space: Option<u16>
 }
 
 impl InstructionAccount {
@@ -33,7 +44,8 @@ impl InstructionAccount {
             is_init: false,
             seeds: None,
             bump: None,
-            payer: None
+            payer: None,
+            space: None
         }
     }
 
@@ -281,7 +293,12 @@ impl ProgramInstruction {
                             let lit_type = exp.callee.expect_ident().sym.to_string();
                             match right_lit {
                                 Lit::Num(num) => {
-                                    let value = num.value;
+                                    // match lit_type {
+                                    //     TsType::I64 => {
+
+                                    //     }
+                                    // }
+                                    let value = Literal::i64_unsuffixed(num.value as i64);
                                     ix_body.push(quote!{
                                         ctx.#left_obj_ident.#left_prop_ident =  #value;
                                     });
@@ -292,10 +309,12 @@ impl ProgramInstruction {
 
                         Expr::Call(CallExpr { span, callee, args, type_args }) => {
                             let memebers = callee.expect_expr().expect_member();
-                            let prop = memebers.prop.expect_ident().sym.to_string();
+                            let prop: &str = &memebers.prop.expect_ident().sym.to_string();
                             let sub_members = memebers.obj.expect_member();
                             let sub_prop = sub_members.prop.expect_ident().sym.to_string();
                             let sub_obj = sub_members.obj.expect_ident().sym.to_string();
+                            let right_sub_obj_ident = Ident::new(&sub_obj, proc_macro2::Span::call_site());
+                            let right_sub_prop_ident = Ident::new(&sub_prop, proc_macro2::Span::call_site());
                             // match prop {
                             //      => {
 
@@ -303,10 +322,21 @@ impl ProgramInstruction {
                             // }
                             match *(args[0].expr.clone()) {
                                 Expr::Lit(Lit::Num(num)) => {
-                                    let value = num.value;
-                                    ix_body.push(quote!{
-                                        ctx.#left_obj_ident.#left_prop_ident =  #value;
-                                    });
+                                    let value = Literal::i64_unsuffixed(num.value as i64);
+                                    match prop {
+                                        "add" => {
+                                            ix_body.push(quote!{
+                                                ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident + #value;
+                                            });
+                                        },
+                                        "sub" => {
+                                            ix_body.push(quote!{
+                                                ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident - #value;
+                                            });
+                                        }
+                                        _ => {}
+                                    }
+                                    
                                 }
                                 _ => {}
                             }
@@ -319,6 +349,7 @@ impl ProgramInstruction {
         
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
+        ix.body = ix_body;
         ix.args = ix_arguments;
         // println!("{:#?} : {:#?}",ix.name, ix.accounts);
         ix
@@ -335,9 +366,13 @@ impl ProgramInstruction {
             let of_type = &a.of_type;
             quote!{ #name: #of_type }
         }).collect();
-        // println!(args);
+        let body = self.body.clone();
+        let stmts = quote!{#(#body),*};
+        // println!("{:#?}", stmts);
         quote!{
-            pub fn #name (ctx: Context<#ctx_name>, #(#args)*) -> Result<()> {}
+            pub fn #name (ctx: Context<#ctx_name>, #(#args)*) -> Result<()> {
+                #stmts
+            }
         }
     }
 
