@@ -1,23 +1,32 @@
-use core::panic;
-use std::{collections::{HashSet, HashMap}, fs};
 use convert_case::{Case, Casing};
-use swc_common::{util::move_map::MoveMap, TypeEq};
-use swc_ecma_ast::{BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr, NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl};
+use core::panic;
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
-use proc_macro2::{Ident, TokenStream, Literal};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
+use swc_common::{util::move_map::MoveMap, TypeEq};
+use swc_ecma_ast::{
+    BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
+    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl,
+};
 use swc_ecma_parser::token::Token;
 
-use crate::{ts_types::{STANDARD_TYPES, rs_type_from_str, STANDARD_ACCOUNT_TYPES}, errors::PoseidonError};
+use crate::{
+    errors::PoseidonError,
+    ts_types::{rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_TYPES},
+};
 
 enum TsType {
     U64,
-    I64
+    I64,
 }
 enum TsOp {
     ADD,
     SUB,
     MUL,
-    DIV
+    DIV,
 }
 #[derive(Debug)]
 pub struct InstructionAccount {
@@ -30,7 +39,7 @@ pub struct InstructionAccount {
     pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<u8>,
     pub payer: Option<String>,
-    pub space: Option<u16>
+    pub space: Option<u16>,
 }
 
 impl InstructionAccount {
@@ -45,7 +54,7 @@ impl InstructionAccount {
             seeds: None,
             bump: None,
             payer: None,
-            space: None
+            space: None,
         }
     }
 
@@ -59,9 +68,8 @@ impl InstructionAccount {
                 quote!(
                     payer = #payer
                 )
-            },
-            None => quote!()
-
+            }
+            None => quote!(),
         };
         let mut bump = quote!();
 
@@ -69,11 +77,11 @@ impl InstructionAccount {
             Some(s) => {
                 // println!("{:#?}", s);
                 bump = quote!(bump);
-                quote!{
+                quote! {
                     seeds = [#(#s),*],
                 }
-            },
-            None => quote!{}
+            }
+            None => quote! {},
         };
         // println!("{:#?} : {:#?}", self.name, seeds);
 
@@ -90,12 +98,12 @@ impl InstructionAccount {
 
         // need to also declare payer in case of init
         let init = match self.is_init {
-            true => quote!{init, #payer,},
+            true => quote! {init, #payer,},
             false => {
                 if self.is_mut {
-                    quote!{mut,}
+                    quote! {mut,}
                 } else {
-                    quote!{}
+                    quote! {}
                 }
             }
         };
@@ -104,7 +112,7 @@ impl InstructionAccount {
                 #init
                 #seeds
                 #bump
-                
+
             )]
             pub #name: #of_type,
         )
@@ -115,7 +123,7 @@ impl InstructionAccount {
 pub struct InstructionArgument {
     pub name: String,
     pub of_type: TokenStream,
-    pub optional: bool
+    pub optional: bool,
 }
 
 pub struct ProgramInstruction {
@@ -126,7 +134,7 @@ pub struct ProgramInstruction {
     pub signer: Option<String>,
     pub uses_system_program: bool,
     pub uses_token_program: bool,
-    pub uses_associated_token_program: bool,    
+    pub uses_associated_token_program: bool,
 }
 
 impl ProgramInstruction {
@@ -143,7 +151,10 @@ impl ProgramInstruction {
         }
     }
 
-    pub fn from_class_method(c: &ClassMethod, custom_accounts: &HashMap<String, ProgramAccount>) -> Self {
+    pub fn from_class_method(
+        c: &ClassMethod,
+        custom_accounts: &HashMap<String, ProgramAccount>,
+    ) -> Self {
         // Get name
         let name = c.key.clone().expect_ident().sym.to_string();
         // println!("{}",name);
@@ -155,7 +166,12 @@ impl ProgramInstruction {
         c.function.params.iter().for_each(|p| {
             let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
             let name = id.sym.to_string();
-            let ident = type_ann.expect("Invalid instruction argument").type_ann.expect_ts_type_ref().type_name.expect_ident();
+            let ident = type_ann
+                .expect("Invalid instruction argument")
+                .type_ann
+                .expect_ts_type_ref()
+                .type_name
+                .expect_ident();
             let of_type = ident.sym.to_string();
             let optional = ident.optional;
 
@@ -163,28 +179,26 @@ impl ProgramInstruction {
             if STANDARD_TYPES.contains(&of_type.as_str()) {
                 ix_arguments.push(InstructionArgument {
                     name,
-                    of_type: rs_type_from_str(&of_type).expect(&format!("Invalid type: {}", of_type)),
-                    optional
-                })    
+                    of_type: rs_type_from_str(&of_type)
+                        .expect(&format!("Invalid type: {}", of_type)),
+                    optional,
+                })
             } else if STANDARD_ACCOUNT_TYPES.contains(&of_type.as_str()) {
                 if of_type == "Signer" {
                     ix.signer = Some(name.clone());
-                    ix_accounts.insert(name.clone(), InstructionAccount::new(
+                    ix_accounts.insert(
                         name.clone(),
-                        quote!{ Signer<'info> },
-                        optional
-                    ));
+                        InstructionAccount::new(name.clone(), quote! { Signer<'info> }, optional),
+                    );
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                     (*cur_ix_acc).is_mut = true;
-
                 }
             } else if custom_accounts.contains_key(&of_type) {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
-                ix_accounts.insert(name.clone(), InstructionAccount::new(
+                ix_accounts.insert(
                     name.clone(),
-                    quote!{ Account<'info, #ty> },
-                    optional
-                ));
+                    InstructionAccount::new(name.clone(), quote! { Account<'info, #ty> }, optional),
+                );
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
@@ -193,84 +207,105 @@ impl ProgramInstruction {
         c.function.params.iter().for_each(|p| {
             let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
             let name = id.sym.to_string();
-            let ident = type_ann.expect("Invalid instruction argument").type_ann.expect_ts_type_ref().type_name.expect_ident();
+            let ident = type_ann
+                .expect("Invalid instruction argument")
+                .type_ann
+                .expect_ts_type_ref()
+                .type_name
+                .expect_ident();
             let of_type = ident.sym.to_string();
             if custom_accounts.contains_key(&of_type) {
-                c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
-                    // println!("start : {:#?}", s);
-                    let s = s.clone().expect_expr().expr;
-                    if let Some(c) = s.as_call() {
-                        
-                        let chaincall1prop = c.clone().callee.expect_expr().expect_member().prop.expect_ident().sym;
-        
-                        let parent_call = c.clone().callee.expect_expr().expect_member();
-                        let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                c.clone()
+                    .function
+                    .body
+                    .expect("Invalid statement")
+                    .stmts
+                    .iter()
+                    .for_each(|s| {
+                        // println!("start : {:#?}", s);
+                        let s = s.clone().expect_expr().expr;
+                        if let Some(c) = s.as_call() {
+                            let chaincall1prop = c
+                                .clone()
+                                .callee
+                                .expect_expr()
+                                .expect_member()
+                                .prop
+                                .expect_ident()
+                                .sym;
 
-                        let members: MemberExpr;
-                        // let obj: String;
-                        let prop: String;
-                        let elems: Vec<Option<ExprOrSpread>>;
+                            let parent_call = c.clone().callee.expect_expr().expect_member();
+                            let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
 
-                        if parent_call.obj.is_call(){
-                            members = parent_call.obj.clone().expect_call().callee.clone().expect_expr().expect_member();
-                            // obj = members.obj.expect_ident().sym.to_string();
-                            prop = members.prop.expect_ident().sym.to_string();
-                            elems = parent_call.obj.expect_call().args[0].expr.clone().expect_array().elems;
-                        } else if parent_call.obj.is_ident() {
-                            // obj = parent_call.clone().obj.expect_ident().sym.to_string();
-                            prop = parent_call.prop.expect_ident().sym.to_string();
-                            elems = c.clone().args[0].expr.clone().expect_array().elems;
-                        }
-                        else {
-                            return;
-                        }
-                        
-                        if prop == "derive"{
-                            let mut seeds_token : Vec<TokenStream> = vec![];
-                            for elem in  elems{     
-                                if let Some(a) = elem {
-                                    match *(a.expr.clone()) {
-                                        Expr::Lit(Lit::Str(seedstr)) => {
-                                            let lit_vec = Literal::byte_string(seedstr.value.as_bytes());
-                                            seeds_token.push(
-                                                quote!{
+                            let members: MemberExpr;
+                            // let obj: String;
+                            let prop: String;
+                            let elems: Vec<Option<ExprOrSpread>>;
+
+                            if parent_call.obj.is_call() {
+                                members = parent_call
+                                    .obj
+                                    .clone()
+                                    .expect_call()
+                                    .callee
+                                    .clone()
+                                    .expect_expr()
+                                    .expect_member();
+                                // obj = members.obj.expect_ident().sym.to_string();
+                                prop = members.prop.expect_ident().sym.to_string();
+                                elems = parent_call.obj.expect_call().args[0]
+                                    .expr
+                                    .clone()
+                                    .expect_array()
+                                    .elems;
+                            } else if parent_call.obj.is_ident() {
+                                // obj = parent_call.clone().obj.expect_ident().sym.to_string();
+                                prop = parent_call.prop.expect_ident().sym.to_string();
+                                elems = c.clone().args[0].expr.clone().expect_array().elems;
+                            } else {
+                                return;
+                            }
+
+                            if prop == "derive" {
+                                let mut seeds_token: Vec<TokenStream> = vec![];
+                                for elem in elems {
+                                    if let Some(a) = elem {
+                                        match *(a.expr.clone()) {
+                                            Expr::Lit(Lit::Str(seedstr)) => {
+                                                let lit_vec =
+                                                    Literal::byte_string(seedstr.value.as_bytes());
+                                                seeds_token.push(quote! {
                                                 #lit_vec
-                                                }
-                                            );
-                                            
-                                        }
-                                        Expr::Ident(ident_str) => {
-                                            let seed_ident = Ident::new(&ident_str.sym.to_string(), proc_macro2::Span::call_site());
-                                            seeds_token.push(
-                                                quote!{
+                                                });
+                                            }
+                                            Expr::Ident(ident_str) => {
+                                                let seed_ident = Ident::new(
+                                                    &ident_str.sym.to_string(),
+                                                    proc_macro2::Span::call_site(),
+                                                );
+                                                seeds_token.push(quote! {
                                                     #seed_ident
-                                                }
-                                            );
-                                            
+                                                });
+                                            }
+                                            _ => {}
                                         }
-                                        _ => {}
+                                    };
+                                }
+                                if seeds_token.len() != 0 {
+                                    (*cur_ix_acc).seeds = Some(seeds_token.clone());
+                                }
+
+                                if chaincall1prop == "init" {
+                                    ix.uses_system_program = true;
+                                    (*cur_ix_acc).is_init = true;
+                                    if let Some(payer) = ix.signer.clone() {
+                                        (*cur_ix_acc).payer = Some(payer);
                                     }
-                                };
-                            }
-                            if seeds_token.len() != 0 {
-                                (*cur_ix_acc).seeds = Some(seeds_token.clone());
-                            }
-                            
-                            if chaincall1prop == "init" {
-                                ix.uses_system_program = true;
-                                (*cur_ix_acc).is_init = true;
-                                if let Some(payer) = ix.signer.clone() {
-                                    (*cur_ix_acc).payer= Some(payer);
-                                    
                                 }
                             }
                         }
-                    }
-        
-                });
+                    });
             }
-
-
         });
 
         c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
@@ -336,7 +371,6 @@ impl ProgramInstruction {
                                         }
                                         _ => {}
                                     }
-                                    
                                 }
                                 _ => {}
                             }
@@ -346,7 +380,7 @@ impl ProgramInstruction {
                 }
             }
         });
-        
+
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.body = ix_body;
@@ -360,16 +394,23 @@ impl ProgramInstruction {
 
     pub fn to_tokens(&self) -> TokenStream {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
-        let ctx_name = Ident::new(&format!("{}Context", &self.name.to_case(Case::Pascal)), proc_macro2::Span::call_site());
-        let args:Vec<TokenStream> = self.args.iter().map(|a| {
-            let name = Ident::new(&a.name, proc_macro2::Span::call_site());
-            let of_type = &a.of_type;
-            quote!{ #name: #of_type }
-        }).collect();
+        let ctx_name = Ident::new(
+            &format!("{}Context", &self.name.to_case(Case::Pascal)),
+            proc_macro2::Span::call_site(),
+        );
+        let args: Vec<TokenStream> = self
+            .args
+            .iter()
+            .map(|a| {
+                let name = Ident::new(&a.name, proc_macro2::Span::call_site());
+                let of_type = &a.of_type;
+                quote! { #name: #of_type }
+            })
+            .collect();
         let body = self.body.clone();
-        let stmts = quote!{#(#body)*};
+        let stmts = quote! {#(#body)*};
         // println!("{:#?}", stmts);
-        quote!{
+        quote! {
             pub fn #name (ctx: Context<#ctx_name>, #(#args)*) -> Result<()> {
                 #stmts
                 Ok(())
@@ -379,29 +420,25 @@ impl ProgramInstruction {
     }
 
     pub fn accounts_to_tokens(&self) -> TokenStream {
-        let ctx_name = Ident::new(&format!("{}Context", &self.name.to_case(Case::Pascal)), proc_macro2::Span::call_site());
+        let ctx_name = Ident::new(
+            &format!("{}Context", &self.name.to_case(Case::Pascal)),
+            proc_macro2::Span::call_site(),
+        );
         let mut accounts: Vec<TokenStream> = self.accounts.iter().map(|a| a.to_tokens()).collect();
         if self.uses_associated_token_program {
-            accounts.push(
-                quote!{
-                    pub associated_token_program: Program<'info, AssociatedToken>,
-                    
-                }
-            )
+            accounts.push(quote! {
+                pub associated_token_program: Program<'info, AssociatedToken>,
+            })
         } else if self.uses_token_program {
-            accounts.push(
-                quote!{
-                    pub token_program: Program<'info, Token>,
-                }
-            )
+            accounts.push(quote! {
+                pub token_program: Program<'info, Token>,
+            })
         } else if self.uses_system_program {
-            accounts.push(
-                quote!{
-                    pub system_program: Program<'info, System>,
-                }
-            )
+            accounts.push(quote! {
+                pub system_program: Program<'info, System>,
+            })
         }
-        quote!{
+        quote! {
             #[derive(Accounts)]
             pub struct #ctx_name<'info> {
                 #(#accounts)*
@@ -419,7 +456,7 @@ pub struct ProgramAccountField {
 #[derive(Debug, Clone)]
 pub struct ProgramAccount {
     pub name: String,
-    pub fields: Vec<ProgramAccountField>
+    pub fields: Vec<ProgramAccountField>,
 }
 
 impl ProgramAccount {
@@ -427,31 +464,38 @@ impl ProgramAccount {
         // Ensure custom account extends the Account type
         // TODO: Allow multiple "extends"
         match interface.extends.first() {
-            Some(TsExprWithTypeArgs { expr, .. }) if expr.clone().ident().is_some() && expr.clone().ident().unwrap().sym.to_string() == "Account" => {},
+            Some(TsExprWithTypeArgs { expr, .. })
+                if expr.clone().ident().is_some()
+                    && expr.clone().ident().unwrap().sym.to_string() == "Account" => {}
             _ => panic!("Custom accounts must extend Account type"),
         }
         let name: String = interface.id.sym.to_string();
         // println!("{}", &name);
         // TODO: Process fields of account
-        let fields: Vec<ProgramAccountField> = interface.body.body.iter().map(|f | {
-            let field = f.clone().ts_property_signature().expect("Invalid property");
-            let field_name = field.key.ident().expect("Invalid property").sym.to_string();
-            let field_type = field.type_ann
-                .expect("Invalid type annotation")
-                .type_ann
-                .as_ts_type_ref()
-                .expect("Invalid type ref")
-                .type_name.as_ident().expect("Invalid ident").to_string();
-            ProgramAccountField {
-                name: field_name,
-                of_type: field_type
-            }
-        })
-        .collect();
-        Self {
-            name,
-            fields
-        }
+        let fields: Vec<ProgramAccountField> = interface
+            .body
+            .body
+            .iter()
+            .map(|f| {
+                let field = f.clone().ts_property_signature().expect("Invalid property");
+                let field_name = field.key.ident().expect("Invalid property").sym.to_string();
+                let field_type = field
+                    .type_ann
+                    .expect("Invalid type annotation")
+                    .type_ann
+                    .as_ts_type_ref()
+                    .expect("Invalid type ref")
+                    .type_name
+                    .as_ident()
+                    .expect("Invalid ident")
+                    .to_string();
+                ProgramAccountField {
+                    name: field_name,
+                    of_type: field_type,
+                }
+            })
+            .collect();
+        Self { name, fields }
     }
 
     pub fn to_tokens(&self) -> TokenStream {
@@ -459,11 +503,18 @@ impl ProgramAccount {
         let struct_name = Ident::new(&self.name, proc_macro2::Span::call_site());
 
         // Parse fields
-        let fields: Vec<_> = self.fields.iter().map(|field| {
-            let field_name = Ident::new(&field.name, proc_macro2::Span::call_site());
-            let field_type: Ident = Ident::new(field.of_type.split("#").next().unwrap_or(""), proc_macro2::Span::call_site());
-            quote! { pub #field_name: #field_type }
-        }).collect();
+        let fields: Vec<_> = self
+            .fields
+            .iter()
+            .map(|field| {
+                let field_name = Ident::new(&field.name, proc_macro2::Span::call_site());
+                let field_type: Ident = Ident::new(
+                    field.of_type.split("#").next().unwrap_or(""),
+                    proc_macro2::Span::call_site(),
+                );
+                quote! { pub #field_name: #field_type }
+            })
+            .collect();
 
         quote! {
             #[account]
@@ -493,41 +544,71 @@ impl ProgramModule {
             custom_types: HashMap::new(),
             instructions: vec![],
             accounts: vec![],
-            imports: vec![]
+            imports: vec![],
         }
     }
 
     // pub fn populate_from_class_expr(&mut self, class: &ClassExpr, account_store: &HashSet<String, ProgramAccount>) {
 
-    pub fn populate_from_class_expr(&mut self, class: &ClassExpr, custom_accounts: &HashMap<String, ProgramAccount>) {
-        self.name = class.ident.clone().expect("Expected ident").to_string().split("#").next().expect("Expected program to have a valid name").to_string();
+    pub fn populate_from_class_expr(
+        &mut self,
+        class: &ClassExpr,
+        custom_accounts: &HashMap<String, ProgramAccount>,
+    ) {
+        self.name = class
+            .ident
+            .clone()
+            .expect("Expected ident")
+            .to_string()
+            .split("#")
+            .next()
+            .expect("Expected program to have a valid name")
+            .to_string();
         let class_members = &class.class.body;
         let mut class_methods: Vec<ProgramInstruction> = vec![];
         class_members.iter().for_each(|c| {
             match c.as_class_prop() {
                 Some(c) => {
                     // Handle as a class prop
-                    if c.key.as_ident().expect("Invalid class property").sym.to_string() == "PROGRAM_ID" {
-                        let val = c.value.as_ref().expect("Invalid program ID").as_new().expect("Invalid program ID");
-                        assert!(val.callee.clone().expect_ident().sym.to_string() == "Pubkey", "Invalid program ID, expected new Pubkey(\"11111111111111.....\")");
-                        self.id = match val.args.clone().expect("Invalid program ID")[0].expr.clone().lit().expect("Invalid program ID") {
+                    if c.key
+                        .as_ident()
+                        .expect("Invalid class property")
+                        .sym
+                        .to_string()
+                        == "PROGRAM_ID"
+                    {
+                        let val = c
+                            .value
+                            .as_ref()
+                            .expect("Invalid program ID")
+                            .as_new()
+                            .expect("Invalid program ID");
+                        assert!(
+                            val.callee.clone().expect_ident().sym.to_string() == "Pubkey",
+                            "Invalid program ID, expected new Pubkey(\"11111111111111.....\")"
+                        );
+                        self.id = match val.args.clone().expect("Invalid program ID")[0]
+                            .expr
+                            .clone()
+                            .lit()
+                            .expect("Invalid program ID")
+                        {
                             Lit::Str(s) => s.value.to_string(),
-                            _ => panic!("Invalid program ID")
+                            _ => panic!("Invalid program ID"),
                         };
                     } else {
                         // TODO: Allow multiple static declarations that aren't just a program ID
                         panic!("Invalid declaration")
                     }
-                },
+                }
                 None => match c.as_method() {
                     Some(c) => {
                         // Handle as a class method
                         let ix = ProgramInstruction::from_class_method(c, custom_accounts);
                         self.instructions.push(ix);
-
-                    },
-                    None => panic!("Invalid class property or member")
-                }
+                    }
+                    None => panic!("Invalid class property or member"),
+                },
             }
         });
     }
@@ -535,18 +616,24 @@ impl ProgramModule {
     pub fn to_tokens(&self) -> TokenStream {
         let program_name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let program_id = Literal::string(&self.id);
-        let serialized_instructions: Vec<TokenStream> = self.instructions.iter().map(|x| x.to_tokens()).collect();
-        let serialized_account_structs: Vec<TokenStream> = self.instructions.iter().map(|x| x.accounts_to_tokens()).collect();
+        let serialized_instructions: Vec<TokenStream> =
+            self.instructions.iter().map(|x| x.to_tokens()).collect();
+        let serialized_account_structs: Vec<TokenStream> = self
+            .instructions
+            .iter()
+            .map(|x| x.accounts_to_tokens())
+            .collect();
         // let  = self.instructions.iter().map(|x| x.accounts_to_tokens() ).collect();
-        let serialized_accounts: Vec<TokenStream> = self.accounts.iter().map(|x| x.to_tokens() ).collect();
+        let serialized_accounts: Vec<TokenStream> =
+            self.accounts.iter().map(|x| x.to_tokens()).collect();
         quote! {
             use anchor_lang::prelude::*;
 
             declare_id!(#program_id);
-            
+
             #[program]
             pub mod #program_name {
-                
+
                 #(#serialized_instructions)*
             }
 
