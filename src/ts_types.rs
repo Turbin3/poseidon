@@ -21,11 +21,12 @@ pub const STANDARD_TYPES: [&str; 16] = [
     "String"
 ];
 
-pub const STANDARD_ACCOUNT_TYPES: [&str; 4] = [
+pub const STANDARD_ACCOUNT_TYPES: [&str; 5] = [
     "Signer", 
     "UncheckedAccount", 
     "AccountInfo",
     "TokenAccount",
+    "SystemAccount"
 ];
 
 use crate::errors::PoseidonError;

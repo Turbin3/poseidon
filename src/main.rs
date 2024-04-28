@@ -27,13 +27,13 @@ fn main() {
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
     // Real usage
-    let fm = cm
-        .load_file(Path::new("counter.ts"))
-        .expect("failed to load test.ts");
-
     // let fm = cm
-    //     .load_file(Path::new("vault.ts"))
+    //     .load_file(Path::new("counter.ts"))
     //     .expect("failed to load test.ts");
+
+    let fm = cm
+        .load_file(Path::new("vault.ts"))
+        .expect("failed to load test.ts");
 
     let lexer = Lexer::new(
         Syntax::Typescript(Default::default()),

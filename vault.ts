@@ -57,9 +57,9 @@ export default class VaultProgram {
     }
 }
 
-class Vault extends Account {
-    public owner: Pubkey = new Pubkey("")
-    public stateBump: u8 = new u8(0)
-    public authBump: u8 = new u8(0)
-    public vaultBump: u8 = new u8(0)
+export interface Vault extends Account {
+    owner: Pubkey
+    stateBump: u8
+    authBump: u8
+    vaultBump: u8
 }
