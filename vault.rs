@@ -14,37 +14,37 @@ pub mod VaultProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
+    # [account (seeds = [b"vault" , auth . key () . as_ref ()] , bump)]
+    pub vault: SystemAccount<'info>,
+    # [account (init , payer = owner , seeds = [b"state" , owner . key () . as_ref ()] , bump)]
+    pub state: Account<'info, Vault>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    # [account (init , payer = owner , seeds = [b"state"] , bump)]
-    pub state: Account<'info, Vault>,
-    # [account (seeds = [b"vault"] , bump)]
-    pub vault: SystemAccount<'info>,
-    # [account (seeds = [b"auth"] , bump)]
+    # [account (seeds = [b"auth" , state . key () . as_ref ()] , bump)]
     pub auth: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct DepositContext<'info> {
-    #[account()]
-    pub state: Account<'info, Vault>,
-    #[account()]
-    pub auth: UncheckedAccount<'info>,
-    #[account()]
+    # [account (seeds = [b"vault" , auth . key () . as_ref ()] , bump = state . vaultBump)]
     pub vault: SystemAccount<'info>,
+    # [account (seeds = [b"state" , owner . key () . as_ref ()] , bump = state . stateBump)]
+    pub state: Account<'info, Vault>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    # [account (seeds = [b"auth" , state . key () . as_ref ()] , bump = state . authBump)]
+    pub auth: UncheckedAccount<'info>,
 }
 #[derive(Accounts)]
 pub struct WithdrawContext<'info> {
+    # [account (seeds = [b"state" , owner . key () . as_ref ()] , bump = state . stateBump)]
+    pub state: Account<'info, Vault>,
+    # [account (seeds = [b"vault" , auth . key () . as_ref ()] , bump = state . vaultBump)]
+    pub vault: SystemAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    #[account()]
+    # [account (seeds = [b"auth" , state . key () . as_ref ()] , bump = state . authBump)]
     pub auth: UncheckedAccount<'info>,
-    #[account()]
-    pub state: Account<'info, Vault>,
-    #[account()]
-    pub vault: SystemAccount<'info>,
 }
 #[account]
 pub struct Vault {

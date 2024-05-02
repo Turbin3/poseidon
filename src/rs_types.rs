@@ -1,7 +1,7 @@
 use convert_case::{Case, Casing};
 use core::panic;
-use proc_macro2::{Ident, Literal, TokenStream};
-use quote::quote;
+use proc_macro2::{Ident, Literal, TokenStream, Span};
+use quote::{quote, format_ident};
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -71,12 +71,10 @@ impl InstructionAccount {
             }
             None => quote!(),
         };
-        let mut bump = quote!();
 
         let seeds = match &self.seeds {
             Some(s) => {
                 println!("{:#?}", s);
-                bump = quote!(bump);
                 quote! {
                     seeds = [#(#s),*],
                 }
@@ -85,16 +83,14 @@ impl InstructionAccount {
         };
         // println!("{:#?} : {:#?}", self.name, seeds);
 
-        // need to differentiate between first initiation of bump so we can retrive from existing acc incase bumps are stored in diff acc
-        // let bump = match self.bump {
-        //     Some(b) => {
-        //         let bump = Ident::new(&b.to_string(), proc_macro2::Span::call_site());
-        //         quote!{
-        //             bump = #bump
-        //         }
-        //     },
-        //     None => quote!{bump}
-        // };
+        let bump = match &self.bump {
+            Some(b) => {
+                quote!{
+                    #b
+                }
+            },
+            None => quote!{}
+        };
 
         // need to also declare payer in case of init
         let init = match self.is_init {
@@ -261,13 +257,14 @@ impl ProgramInstruction {
                         } else if parent_call.obj.is_ident() {
                             obj = parent_call.clone().obj.expect_ident().sym.to_string();
                             prop = parent_call.prop.expect_ident().sym.to_string();
-                            if prop == "derive" {
+                            if prop.contains("derive") {
                                 elems = c.clone().args[0].expr.clone().expect_array().elems;
                             }
                         }
+                        println!("{:#?} : \n {:#?}", obj, elems);
 
                         if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
-                            if prop == "derive" {
+                            if prop.contains("derive") {
                                 let mut seeds_token: Vec<TokenStream> = vec![];
                                 let chaincall1prop = c
                                     .clone()
@@ -297,11 +294,43 @@ impl ProgramInstruction {
                                                     #seed_ident
                                                 });
                                             }
+                                            Expr::Member(m) => {
+                                                let seed_prop = Ident::new(
+                                                    &m.prop.expect_ident().sym.to_string(),
+                                                    Span::call_site(),
+                                                );
+                                                let seed_obj = Ident::new(
+                                                    &m.obj.expect_ident().sym.to_string(),
+                                                    Span::call_site(),
+                                                );
+                                                // let obj_prop_asref = format!("{}.{}.as_ref()",&m.obj.expect_ident().sym.to_string(), &m.prop.clone().expect_ident().sym.to_string());
+                                                // seeds_token.push(quote! { #obj_prop_asref });
+                                                seeds_token.push( quote!{
+                                                    #seed_obj.#seed_prop().as_ref()
+                                                })
+                                            }
                                             _ => {}
                                         }
                                     };
                                 }
+                                cur_ix_acc.bump = Some(quote!{
+                                    bump
+                                });
 
+                                if prop == "deriveWithBump" {
+                                    let bump_members = c.clone().args[1].expr.clone().expect_member();
+                                    let bump_prop  = Ident::new(
+                                        &bump_members.prop.expect_ident().sym.to_string(),
+                                        Span::call_site(),
+                                    );
+                                    let bump_obj = Ident::new(
+                                        &bump_members.obj.expect_ident().sym.to_string(),
+                                        Span::call_site(),
+                                    );
+                                    cur_ix_acc.bump = Some(quote!{
+                                        bump = #bump_obj.#bump_prop
+                                    })
+                                }
                                 // println!("{:#?} : \n {:#?}", obj, seeds_token);
 
                                 if seeds_token.len() != 0 {
