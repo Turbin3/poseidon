@@ -17,10 +17,10 @@ pub mod VoteProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
-    #[account(mut)]
-    pub user: Signer<'info>,
     # [account (init , payer = user , seeds = [b"vote" , hash] , bump)]
     pub state: Account<'info, VoteState>,
+    #[account(mut)]
+    pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
