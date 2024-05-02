@@ -9,8 +9,9 @@ export default class VaultProgram {
         auth: UncheckedAccount,
         vault: SystemAccount
     ): Result {
-        state.derive(['state', owner.key]).init()
+        
         auth.derive(['auth', state.key])
+        state.derive(['state', owner.key]).init()
         vault.derive(['vault', auth.key])
 
         state.owner = owner.key;

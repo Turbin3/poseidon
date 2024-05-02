@@ -75,7 +75,7 @@ impl InstructionAccount {
 
         let seeds = match &self.seeds {
             Some(s) => {
-                // println!("{:#?}", s);
+                println!("{:#?}", s);
                 bump = quote!(bump);
                 quote! {
                     seeds = [#(#s),*],
@@ -224,7 +224,7 @@ impl ProgramInstruction {
                 .type_name
                 .expect_ident();
             let of_type = ident.sym.to_string();
-            if custom_accounts.contains_key(&of_type) {
+            if custom_accounts.contains_key(&of_type) || STANDARD_ACCOUNT_TYPES.contains(&of_type.as_str()) {
                 c.clone()
                     .function
                     .body
@@ -235,14 +235,7 @@ impl ProgramInstruction {
                         // println!("start : {:#?}", s);
                         let s = s.clone().expect_expr().expr;
                         if let Some(c) = s.as_call() {
-                            let chaincall1prop = c
-                                .clone()
-                                .callee
-                                .expect_expr()
-                                .expect_member()
-                                .prop
-                                .expect_ident()
-                                .sym;
+                            
 
                             let parent_call = c.clone().callee.expect_expr().expect_member();
                             let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
@@ -279,40 +272,59 @@ impl ProgramInstruction {
                             }
 
                             if prop == "derive" {
+                                // println!("{:#?} : \n {:#?}", obj, elems);
+                                println!("{:#?} : \n {:#?}", cur_ix_acc.name, obj);
+                                let mut chaincall1prop : String = String::from("");
 
                                 let mut seeds_token: Vec<TokenStream> = vec![];
-                                for elem in elems {
-                                    if let Some(a) = elem {
-                                        match *(a.expr.clone()) {
-                                            Expr::Lit(Lit::Str(seedstr)) => {
-                                                let lit_vec =
-                                                    Literal::byte_string(seedstr.value.as_bytes());
-                                                seeds_token.push(quote! {
-                                                #lit_vec
-                                                });
+                                
+                                if cur_ix_acc.name == obj {
+                                    chaincall1prop = c
+                                        .clone()
+                                        .callee
+                                        .expect_expr()
+                                        .expect_member()
+                                        .prop
+                                        .expect_ident()
+                                        .sym.to_string();
+                                    for elem in elems {
+                                        if let Some(a) = elem {
+                                            match *(a.expr.clone()) {
+                                                Expr::Lit(Lit::Str(seedstr)) => {
+                                                    let lit_vec =
+                                                        Literal::byte_string(seedstr.value.as_bytes());
+                                                    seeds_token.push(quote! {
+                                                    #lit_vec
+                                                    });
+                                                }
+                                                Expr::Ident(ident_str) => {
+                                                    let seed_ident = Ident::new(
+                                                        &ident_str.sym.to_string(),
+                                                        proc_macro2::Span::call_site(),
+                                                    );
+                                                    seeds_token.push(quote! {
+                                                        #seed_ident
+                                                    });
+                                                }
+                                                _ => {}
                                             }
-                                            Expr::Ident(ident_str) => {
-                                                let seed_ident = Ident::new(
-                                                    &ident_str.sym.to_string(),
-                                                    proc_macro2::Span::call_site(),
-                                                );
-                                                seeds_token.push(quote! {
-                                                    #seed_ident
-                                                });
-                                            }
-                                            _ => {}
-                                        }
-                                    };
+                                        };
+                                    }
                                 }
+                                
+                                // println!("{:#?} : \n {:#?}", obj, seeds_token);
+
                                 if seeds_token.len() != 0 {
-                                    (*cur_ix_acc).seeds = Some(seeds_token.clone());
+                                    cur_ix_acc.seeds = Some(seeds_token.clone());
+                                // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
+
                                 }
 
                                 if chaincall1prop == "init" {
                                     ix.uses_system_program = true;
-                                    (*cur_ix_acc).is_init = true;
+                                    cur_ix_acc.is_init = true;
                                     if let Some(payer) = ix.signer.clone() {
-                                        (*cur_ix_acc).payer = Some(payer);
+                                        cur_ix_acc.payer = Some(payer);
                                     }
                                 }
                             }
