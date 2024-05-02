@@ -214,124 +214,106 @@ impl ProgramInstruction {
             }
         });
 
-        c.function.params.iter().for_each(|p| {
-            let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
-            let name = id.sym.to_string();
-            let ident = type_ann
-                .expect("Invalid instruction argument")
-                .type_ann
-                .expect_ts_type_ref()
-                .type_name
-                .expect_ident();
-            let of_type = ident.sym.to_string();
-            if custom_accounts.contains_key(&of_type) || STANDARD_ACCOUNT_TYPES.contains(&of_type.as_str()) {
-                c.clone()
-                    .function
-                    .body
-                    .expect("Invalid statement")
-                    .stmts
-                    .iter()
-                    .for_each(|s| {
-                        // println!("start : {:#?}", s);
-                        let s = s.clone().expect_expr().expr;
-                        if let Some(c) = s.as_call() {
-                            
+        c.clone()
+            .function
+            .body
+            .expect("Invalid statement")
+            .stmts
+            .iter()
+            .for_each(|s| {
+                // println!("start : {:#?}", s);
+                let s = s.clone().expect_expr().expr;
+                if let Some(c) = s.as_call() {
 
-                            let parent_call = c.clone().callee.expect_expr().expect_member();
-                            let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                    let parent_call = c.clone().callee.expect_expr().expect_member();
 
-                            let members: MemberExpr;
-                            let mut obj: String = String::from("");
-                            let mut prop: String = String::from("");
-                            let mut elems: Vec<Option<ExprOrSpread>> = vec![];
+                    let members: MemberExpr;
+                    let mut obj: String = String::from("");
+                    let mut prop: String = String::from("");
+                    let mut elems: Vec<Option<ExprOrSpread>> = vec![];
 
-                            if parent_call.obj.is_call() {
-                                members = parent_call
-                                    .obj
-                                    .clone()
-                                    .expect_call()
-                                    .callee
-                                    .clone()
-                                    .expect_expr()
-                                    .expect_member();
-                                obj = members.obj.expect_ident().sym.to_string();
-                                prop = members.prop.expect_ident().sym.to_string();
-                                if prop == "derive" {
-                                    elems = parent_call.obj.expect_call().args[0]
-                                    .expr
-                                    .clone()
-                                    .expect_array()
-                                    .elems;
-                                }
-                            } else if parent_call.obj.is_ident() {
-                                obj = parent_call.clone().obj.expect_ident().sym.to_string();
-                                prop = parent_call.prop.expect_ident().sym.to_string();
-                                if prop == "derive" {
-                                    elems = c.clone().args[0].expr.clone().expect_array().elems;
-                                }
+                    if parent_call.obj.is_call() {
+                        members = parent_call
+                            .obj
+                            .clone()
+                            .expect_call()
+                            .callee
+                            .clone()
+                            .expect_expr()
+                            .expect_member();
+                        obj = members.obj.expect_ident().sym.to_string();
+                        prop = members.prop.expect_ident().sym.to_string();
+                        if prop == "derive" {
+                            elems = parent_call.obj.expect_call().args[0]
+                            .expr
+                            .clone()
+                            .expect_array()
+                            .elems;
+                        }
+                    } else if parent_call.obj.is_ident() {
+                        obj = parent_call.clone().obj.expect_ident().sym.to_string();
+                        prop = parent_call.prop.expect_ident().sym.to_string();
+                        if prop == "derive" {
+                            elems = c.clone().args[0].expr.clone().expect_array().elems;
+                        }
+                    }
+
+                    if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
+                        if prop == "derive" {
+                            let mut seeds_token: Vec<TokenStream> = vec![];
+                            let chaincall1prop = c
+                                .clone()
+                                .callee
+                                .expect_expr()
+                                .expect_member()
+                                .prop
+                                .expect_ident()
+                                .sym.to_string();
+                            for elem in elems {
+                                if let Some(a) = elem {
+                                    match *(a.expr.clone()) {
+                                        Expr::Lit(Lit::Str(seedstr)) => {
+                                            let lit_vec =
+                                                Literal::byte_string(seedstr.value.as_bytes());
+                                            seeds_token.push(quote! {
+                                            #lit_vec
+                                            });
+                                        }
+                                        Expr::Ident(ident_str) => {
+                                            let seed_ident = Ident::new(
+                                                &ident_str.sym.to_string(),
+                                                proc_macro2::Span::call_site(),
+                                            );
+                                            seeds_token.push(quote! {
+                                                #seed_ident
+                                            });
+                                        }
+                                        _ => {}
+                                    }
+                                };
                             }
-
-                            if prop == "derive" {
-                                // println!("{:#?} : \n {:#?}", obj, elems);
-                                println!("{:#?} : \n {:#?}", cur_ix_acc.name, obj);
-                                let mut chaincall1prop : String = String::from("");
-
-                                let mut seeds_token: Vec<TokenStream> = vec![];
-                                
-                                if cur_ix_acc.name == obj {
-                                    chaincall1prop = c
-                                        .clone()
-                                        .callee
-                                        .expect_expr()
-                                        .expect_member()
-                                        .prop
-                                        .expect_ident()
-                                        .sym.to_string();
-                                    for elem in elems {
-                                        if let Some(a) = elem {
-                                            match *(a.expr.clone()) {
-                                                Expr::Lit(Lit::Str(seedstr)) => {
-                                                    let lit_vec =
-                                                        Literal::byte_string(seedstr.value.as_bytes());
-                                                    seeds_token.push(quote! {
-                                                    #lit_vec
-                                                    });
-                                                }
-                                                Expr::Ident(ident_str) => {
-                                                    let seed_ident = Ident::new(
-                                                        &ident_str.sym.to_string(),
-                                                        proc_macro2::Span::call_site(),
-                                                    );
-                                                    seeds_token.push(quote! {
-                                                        #seed_ident
-                                                    });
-                                                }
-                                                _ => {}
-                                            }
-                                        };
-                                    }
-                                }
-                                
-                                // println!("{:#?} : \n {:#?}", obj, seeds_token);
-
-                                if seeds_token.len() != 0 {
-                                    cur_ix_acc.seeds = Some(seeds_token.clone());
-                                // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
-
-                                }
-
-                                if chaincall1prop == "init" {
-                                    ix.uses_system_program = true;
-                                    cur_ix_acc.is_init = true;
-                                    if let Some(payer) = ix.signer.clone() {
-                                        cur_ix_acc.payer = Some(payer);
-                                    }
+                            
+                            
+                            // println!("{:#?} : \n {:#?}", obj, seeds_token);
+    
+                            if seeds_token.len() != 0 {
+                                cur_ix_acc.seeds = Some(seeds_token.clone());
+                            // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
+    
+                            }
+    
+                            if chaincall1prop == "init" {
+                                ix.uses_system_program = true;
+                                cur_ix_acc.is_init = true;
+                                if let Some(payer) = ix.signer.clone() {
+                                    cur_ix_acc.payer = Some(payer);
                                 }
                             }
                         }
-                    });
-            }
-        });
+                    } 
+                }
+            });
+            
 
         // c.clone().function.body.expect("Invalid statement").stmts.iter().for_each(|s| {
         //     // println!("start : {:#?}", s);

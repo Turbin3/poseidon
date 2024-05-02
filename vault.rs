@@ -14,14 +14,14 @@ pub mod VaultProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
     # [account (seeds = [b"auth"] , bump)]
     pub auth: UncheckedAccount<'info>,
     # [account (seeds = [b"vault"] , bump)]
     pub vault: SystemAccount<'info>,
     # [account (init , payer = owner , seeds = [b"state"] , bump)]
     pub state: Account<'info, Vault>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -31,20 +31,20 @@ pub struct DepositContext<'info> {
     #[account()]
     pub vault: SystemAccount<'info>,
     #[account()]
-    pub state: Account<'info, Vault>,
-    #[account()]
     pub auth: UncheckedAccount<'info>,
+    #[account()]
+    pub state: Account<'info, Vault>,
 }
 #[derive(Accounts)]
 pub struct WithdrawContext<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account()]
+    pub state: Account<'info, Vault>,
     #[account()]
     pub auth: UncheckedAccount<'info>,
     #[account()]
     pub vault: SystemAccount<'info>,
-    #[account()]
-    pub state: Account<'info, Vault>,
-    #[account(mut)]
-    pub owner: Signer<'info>,
 }
 #[account]
 pub struct Vault {
