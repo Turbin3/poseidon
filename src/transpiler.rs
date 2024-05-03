@@ -1,6 +1,6 @@
 use core::panic;
 use std::{fs, collections::HashMap};
-use rust_format::{Formatter, RustFmt};
+use rust_format::{Formatter, PrettyPlease, RustFmt};
 
 use swc_ecma_ast::*;
 use crate::rs_types::{
@@ -58,6 +58,6 @@ pub fn transpile(module: &Module) {
         None => panic!("Program class undefined")
     }
     let serialized_program = program.to_tokens();
-    fs::write("vault.rs", RustFmt::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
+    fs::write("vault.rs", PrettyPlease::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
 }
 

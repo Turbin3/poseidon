@@ -12,4 +12,4 @@ swc_ecma_ast = "0.110.2"
 thiserror = "1.0.50"
 quote = "1.0.33"
 proc-macro2 = "1.0.69"
-rust-format = "0.3.4"
+rust-format = { version = "0.3.4", features = ["pretty_please"] }

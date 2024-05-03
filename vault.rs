@@ -14,42 +14,42 @@ pub mod VaultProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
-    # [account (seeds = [b"vault" , auth . key () . as_ref ()] , bump)]
+    #[account(seeds = [b"vault", auth.key().as_ref()], bump)]
     pub vault: SystemAccount<'info>,
-    # [account (init , payer = owner , seeds = [b"state" , owner . key () . as_ref ()] , bump)]
-    pub state: Account<'info, Vault>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    # [account (seeds = [b"auth" , state . key () . as_ref ()] , bump)]
+    #[account(init, payer = owner, seeds = [b"state", owner.key().as_ref()], bump)]
+    pub state: Account<'info, Vault>,
+    #[account(seeds = [b"auth", state.key().as_ref()], bump)]
     pub auth: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct DepositContext<'info> {
-    # [account (seeds = [b"vault" , auth . key () . as_ref ()] , bump = state . vaultBump)]
-    pub vault: SystemAccount<'info>,
-    # [account (seeds = [b"state" , owner . key () . as_ref ()] , bump = state . stateBump)]
-    pub state: Account<'info, Vault>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    # [account (seeds = [b"auth" , state . key () . as_ref ()] , bump = state . authBump)]
+    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
+    pub state: Account<'info, Vault>,
+    #[account(seeds = [b"vault", auth.key().as_ref()], bump = state.vaultBump)]
+    pub vault: SystemAccount<'info>,
+    #[account(seeds = [b"auth", state.key().as_ref()], bump = state.authBump)]
     pub auth: UncheckedAccount<'info>,
 }
 #[derive(Accounts)]
 pub struct WithdrawContext<'info> {
-    # [account (seeds = [b"state" , owner . key () . as_ref ()] , bump = state . stateBump)]
+    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
     pub state: Account<'info, Vault>,
-    # [account (seeds = [b"vault" , auth . key () . as_ref ()] , bump = state . vaultBump)]
+    #[account(seeds = [b"auth", state.key().as_ref()], bump = state.authBump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(seeds = [b"vault", auth.key().as_ref()], bump = state.vaultBump)]
     pub vault: SystemAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
-    # [account (seeds = [b"auth" , state . key () . as_ref ()] , bump = state . authBump)]
-    pub auth: UncheckedAccount<'info>,
 }
 #[account]
 pub struct Vault {
     pub owner: Pubkey,
-    pub stateBump: u8,
-    pub authBump: u8,
-    pub vaultBump: u8,
+    pub state_bump: u8,
+    pub auth_bump: u8,
+    pub vault_bump: u8,
 }

@@ -45,7 +45,7 @@ pub struct InstructionAccount {
 impl InstructionAccount {
     pub fn new(name: String, of_type: TokenStream, optional: bool) -> Self {
         Self {
-            name,
+            name: name.to_case(Case::Snake),
             of_type,
             optional,
             is_mut: false,
@@ -546,7 +546,7 @@ impl ProgramAccount {
             .fields
             .iter()
             .map(|field| {
-                let field_name = Ident::new(&field.name, proc_macro2::Span::call_site());
+                let field_name = Ident::new(&field.name.to_case(Case::Snake), proc_macro2::Span::call_site());
                 let field_type: Ident = Ident::new(
                     field.of_type.split("#").next().unwrap_or(""),
                     proc_macro2::Span::call_site(),
