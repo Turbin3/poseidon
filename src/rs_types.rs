@@ -1,6 +1,6 @@
 use convert_case::{Case, Casing};
 use core::panic;
-use proc_macro2::{Ident, Literal, TokenStream, Span};
+use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, format_ident};
 use std::{
     collections::{HashMap, HashSet},
@@ -261,7 +261,6 @@ impl ProgramInstruction {
                                 elems = c.clone().args[0].expr.clone().expect_array().elems;
                             }
                         }
-                        println!("{:#?} : \n {:#?}", obj, elems);
 
                         if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
                             if prop.contains("derive") {
@@ -299,12 +298,17 @@ impl ProgramInstruction {
                                                     &m.prop.expect_ident().sym.to_string(),
                                                     Span::call_site(),
                                                 );
+                                                // let seed_prop = TokenTree::Ident(Ident::new(&m.prop.expect_ident().sym.to_string(),
+                                                // Span::call_site()));
                                                 let seed_obj = Ident::new(
                                                     &m.obj.expect_ident().sym.to_string(),
                                                     Span::call_site(),
                                                 );
                                                 // let obj_prop_asref = format!("{}.{}.as_ref()",&m.obj.expect_ident().sym.to_string(), &m.prop.clone().expect_ident().sym.to_string());
                                                 // seeds_token.push(quote! { #obj_prop_asref });
+                                                // let dot = Punct::new('.', Spacing::Joint);
+                                                // let property_call = Group::new(Delimiter::Parenthesis, TokenStream::new()); 
+                                                // property_call.
                                                 seeds_token.push( quote!{
                                                     #seed_obj.#seed_prop().as_ref()
                                                 })
@@ -347,75 +351,106 @@ impl ProgramInstruction {
                                 }
                             }
                         }
+                        if obj == "SystemProgram" {
+                            let from_acc = c.clone().args[0].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
+                            let to_acc = c.clone().args[1].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
+                            let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
+                            let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
+
+                            ix_body.push(quote!{
+                                let transfer_accounts = Transfer {
+                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                    to: ctx.accounts.#to_acc_ident.to_account_info()
+                                };
+                                let transfer_ctx = CpiContext::new(
+                                    ctx.accounts.system_program.to_account_info(),
+                                    transfer_accounts
+                                );
+                                transfer(transfer_ctx, amount);
+                            });
+                        }
                     }
-                    // Expr::Assign(a) => {
-                    //     // let op = a.op;
-                    //     let left_members = a.clone().left.expect_expr().expect_member();
-                    //     let left_obj = left_members.obj.expect_ident().sym.to_string();
-                    //     let left_prop = left_members.prop.expect_ident().sym.to_string();
-                    //     if ix_accounts.contains_key(&left_obj){
-                    //         let left_obj_ident = Ident::new(&left_obj, proc_macro2::Span::call_site());
-                    //         let left_prop_ident = Ident::new(&left_prop, proc_macro2::Span::call_site());
-                    //         let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
-                    //         cur_acc.is_mut = true;
+                    Expr::Assign(a) => {
+                        // let op = a.op;
+                        let left_members = a.clone().left.expect_expr().expect_member();
+                        let left_obj = left_members.obj.expect_ident().sym.to_string();
+                        let left_prop = left_members.prop.expect_ident().sym.to_string();
+                        if ix_accounts.contains_key(&left_obj){
+                            let left_obj_ident = Ident::new(&left_obj, proc_macro2::Span::call_site());
+                            let left_prop_ident = Ident::new(&left_prop, proc_macro2::Span::call_site());
+                            let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
+                            cur_acc.is_mut = true;
 
-                    //         match *(a.clone().right) {
-                    //             Expr::New(exp) => {
-                    //                 let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
-                    //                 let lit_type = exp.callee.expect_ident().sym.to_string();
-                    //                 match right_lit {
-                    //                     Lit::Num(num) => {
-                    //                         // match lit_type {
-                    //                         //     TsType::I64 => {
+                            match *(a.clone().right) {
+                                Expr::New(exp) => {
+                                    let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
+                                    let lit_type = exp.callee.expect_ident().sym.to_string();
+                                    match right_lit {
+                                        Lit::Num(num) => {
+                                            // match lit_type {
+                                            //     TsType::I64 => {
 
-                    //                         //     }
-                    //                         // }
-                    //                         let value = Literal::i64_unsuffixed(num.value as i64);
-                    //                         ix_body.push(quote!{
-                    //                             ctx.#left_obj_ident.#left_prop_ident =  #value;
-                    //                         });
-                    //                     }
-                    //                     _ => {}
-                    //                 }
-                    //             },
+                                            //     }
+                                            // }
+                                            let value = Literal::i64_unsuffixed(num.value as i64);
+                                            ix_body.push(quote!{
+                                                ctx.#left_obj_ident.#left_prop_ident =  #value;
+                                            });
+                                        }
+                                        _ => {}
+                                    }
+                                },
 
-                    //             Expr::Call(CallExpr { span, callee, args, type_args }) => {
-                    //                 let memebers = callee.expect_expr().expect_member();
-                    //                 let prop: &str = &memebers.prop.expect_ident().sym.to_string();
-                    //                 let sub_members = memebers.obj.expect_member();
-                    //                 let sub_prop = sub_members.prop.expect_ident().sym.to_string();
-                    //                 let sub_obj = sub_members.obj.expect_ident().sym.to_string();
-                    //                 let right_sub_obj_ident = Ident::new(&sub_obj, proc_macro2::Span::call_site());
-                    //                 let right_sub_prop_ident = Ident::new(&sub_prop, proc_macro2::Span::call_site());
-                    //                 // match prop {
-                    //                 //      => {
+                                Expr::Call(CallExpr { span, callee, args, type_args }) => {
+                                    let memebers = callee.expect_expr().expect_member();
+                                    let prop: &str = &memebers.prop.clone().expect_ident().sym.to_string();
+                                    match *(memebers.obj) {
+                                        Expr::Member(sub_members) => {
+                                            let sub_prop = sub_members.prop.expect_ident().sym.to_string();
+                                            let sub_obj = sub_members.obj.expect_ident().sym.to_string();
+                                            let right_sub_obj_ident = Ident::new(&sub_obj, proc_macro2::Span::call_site());
+                                            let right_sub_prop_ident = Ident::new(&sub_prop, proc_macro2::Span::call_site());
+                                            match *(args[0].expr.clone()) {
+                                                Expr::Lit(Lit::Num(num)) => {
+                                                    let value = Literal::i64_unsuffixed(num.value as i64);
+                                                    match prop {
+                                                        "add" => {
+                                                            ix_body.push(quote!{
+                                                                ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident + #value;
+                                                            });
+                                                        },
+                                                        "sub" => {
+                                                            ix_body.push(quote!{
+                                                                ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident - #value;
+                                                            });
+                                                        }
+                                                        _ => {}
+                                                    }
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                        Expr::Ident(right_obj) => {
+                                            let right_obj = right_obj.sym.to_string();
+                                            let right_prop = memebers.prop.expect_ident().sym.to_string();
+                                            // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
+                                            // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
 
-                    //                 //     }
-                    //                 // }
-                    //                 match *(args[0].expr.clone()) {
-                    //                     Expr::Lit(Lit::Num(num)) => {
-                    //                         let value = Literal::i64_unsuffixed(num.value as i64);
-                    //                         match prop {
-                    //                             "add" => {
-                    //                                 ix_body.push(quote!{
-                    //                                     ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident + #value;
-                    //                                 });
-                    //                             },
-                    //                             "sub" => {
-                    //                                 ix_body.push(quote!{
-                    //                                     ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident - #value;
-                    //                                 });
-                    //                             }
-                    //                             _ => {}
-                    //                         }
-                    //                     }
-                    //                     _ => {}
-                    //                 }
-                    //             }
-                    //             _ => {}
-                    //         }
-                    //     }
-                    // }
+                                            if right_prop == "getBump" {
+                                                let right_obj_literal = Literal::string(&right_obj);
+                                                ix_body.push(quote!{
+                                                    ctx.#left_obj_ident.#left_prop_ident = *ctx.bumps.get(#right_obj_literal).unwrap();
+                                                })
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                    
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                     _ => {}
                 }
             });
