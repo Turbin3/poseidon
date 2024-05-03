@@ -205,7 +205,43 @@ impl ProgramInstruction {
                             quote! { SystemAccount<'info> },
                             optional,
                         ),
+                        
                     );
+                    ix.uses_system_program = true;
+
+                    let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                    (*cur_ix_acc).is_mut = true;
+
+                } else if of_type == "AssociatedTokenAccount" {
+                    ix_accounts.insert(
+                        name.clone(),
+                        InstructionAccount::new(
+                            name.clone(),
+                            quote! { Account<'info, TokenAccount> },
+                            optional,
+                        ),
+                    );
+                    ix.uses_associated_token_program = true;
+                    ix.uses_token_program = true;
+                } else if of_type == "Mint" {
+                    ix_accounts.insert(
+                        name.clone(),
+                        InstructionAccount::new(
+                            name.clone(),
+                            quote! { Account<'info, Mint> },
+                            optional,
+                        ),
+                    );
+                } else if of_type == "TokenAccount" {
+                    ix_accounts.insert(
+                        name.clone(),
+                        InstructionAccount::new(
+                            name.clone(),
+                            quote! { Account<'info, TokenAccount> },
+                            optional,
+                        ),
+                    );
+                    ix.uses_token_program = true;
                 }
             } else if custom_accounts.contains_key(&of_type) {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
@@ -503,11 +539,13 @@ impl ProgramInstruction {
             accounts.push(quote! {
                 pub associated_token_program: Program<'info, AssociatedToken>,
             })
-        } else if self.uses_token_program {
+        } 
+        if self.uses_token_program {
             accounts.push(quote! {
                 pub token_program: Program<'info, Token>,
             })
-        } else if self.uses_system_program {
+        }
+        if self.uses_system_program {
             accounts.push(quote! {
                 pub system_program: Program<'info, System>,
             })

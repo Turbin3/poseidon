@@ -35,6 +35,10 @@ fn main() {
         .load_file(Path::new("vault.ts"))
         .expect("failed to load test.ts");
 
+    // let fm = cm
+    //     .load_file(Path::new("escrow.ts"))
+    //     .expect("failed to load test.ts");
+
     let lexer = Lexer::new(
         Syntax::Typescript(Default::default()),
         Default::default(),
