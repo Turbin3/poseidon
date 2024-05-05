@@ -8,25 +8,33 @@ pub mod EscrowProgram {
         offer_amount: u64,
         seed: u64,
     ) -> Result<()> {
+        ctx.accounts.escrow.maker = ctx.accounts.maker.key;
+        ctx.accounts.escrow.makerMint = ctx.accounts.makerMint.key;
+        ctx.accounts.escrow.takerMint = ctx.accounts.takerMint.key;
+        let cpi_accounts = Transfer {
+            from: self.maker_ata.to_account_info(),
+            to: self.vault.to_account_info(),
+            authority: self.maker.to_account_info(),
+        };
+        let ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        transfer(ctx, "depositAmount");
         Ok(())
     }
 }
 #[derive(Accounts)]
 pub struct MakeContext<'info> {
-    # [account (init , payer = maker , seeds = [b"escrow" , maker . key () . as_ref ()] , bump)]
-    pub escrow: Account<'info, EscrowState>,
+    pub maker_mint: Account<'info, Mint>,
+    pub taker_mint: Account<'info, Mint>,
     # [account (seeds = [b"auth"] , bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account()]
-    pub maker_mint: Account<'info, Mint>,
+    # [account (mut , seeds = [b"escrow" , maker . key () . as_ref ()] , bump)]
+    pub escrow: Account<'info, EscrowState>,
     #[account(mut)]
     pub maker: Signer<'info>,
-    #[account()]
-    pub vault: Account<'info, TokenAccount>,
-    # [account (mut , associated_token :: mint = maker_mint , associated_token :: authority = maker)]
+    # [account (mut , associated_token :: mint = maker_mint , associated_token :: authority = maker ,)]
     pub maker_ata: Account<'info, TokenAccount>,
-    #[account()]
-    pub taker_mint: Account<'info, Mint>,
+    # [account (mut , seeds = [b"vault" , escrow . key () . as_ref ()] , associated_token :: mint = maker_mint , associated_token :: authority = auth , bump)]
+    pub vault: Account<'info, TokenAccount>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
