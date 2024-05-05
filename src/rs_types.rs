@@ -161,7 +161,7 @@ impl ProgramInstruction {
         let mut ix_body: Vec<TokenStream> = vec![];
         c.function.params.iter().for_each(|p| {
             let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
-            let name = id.sym.to_string();
+            let name = id.sym.to_string().to_case(Case::Snake);
             let ident = type_ann
                 .expect("Invalid instruction argument")
                 .type_ann
@@ -211,7 +211,6 @@ impl ProgramInstruction {
 
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                     (*cur_ix_acc).is_mut = true;
-
                 } else if of_type == "AssociatedTokenAccount" {
                     ix_accounts.insert(
                         name.clone(),
@@ -254,242 +253,239 @@ impl ProgramInstruction {
             }
         });
 
-        c.clone()
-            .function
-            .body
-            .expect("Invalid statement")
-            .stmts
-            .iter()
-            .for_each(|s| {
-                // println!("start : {:#?}", s);
-                let s: Box<Expr> = s.clone().expect_expr().expr;
-                match *s {
-                    Expr::Call(c) => {
-                        let parent_call = c.clone().callee.expect_expr().expect_member();
+        // c.clone()
+        //     .function
+        //     .body
+        //     .expect("Invalid statement")
+        //     .stmts
+        //     .iter()
+        //     .for_each(|s| {
+        //         // println!("start : {:#?}", s);
+        //         let s: Box<Expr> = s.clone().expect_expr().expr;
+        //         match *s {
+        //             Expr::Call(c) => {
+        //                 let parent_call = c.clone().callee.expect_expr().expect_member();
 
-                        let members: MemberExpr;
-                        let mut obj: String = String::from("");
-                        let mut prop: String = String::from("");
-                        let mut elems: Vec<Option<ExprOrSpread>> = vec![];
+        //                 let members: MemberExpr;
+        //                 let mut obj: String = String::from("");
+        //                 let mut prop: String = String::from("");
+        //                 let mut args: Vec<ExprOrSpread> = vec![] ;
 
-                        if parent_call.obj.is_call() {
-                            members = parent_call
-                                .obj
-                                .clone()
-                                .expect_call()
-                                .callee
-                                .clone()
-                                .expect_expr()
-                                .expect_member();
-                            obj = members.obj.expect_ident().sym.to_string();
-                            prop = members.prop.expect_ident().sym.to_string();
-                            if prop == "derive" {
-                                elems = parent_call.obj.expect_call().args[0]
-                                    .expr
-                                    .clone()
-                                    .expect_array()
-                                    .elems;
-                            }
-                        } else if parent_call.obj.is_ident() {
-                            obj = parent_call.clone().obj.expect_ident().sym.to_string();
-                            prop = parent_call.prop.expect_ident().sym.to_string();
-                            if prop.contains("derive") {
-                                elems = c.clone().args[0].expr.clone().expect_array().elems;
-                            }
-                        }
+        //                 if parent_call.obj.is_call() {
+        //                     members = parent_call
+        //                         .obj
+        //                         .clone()
+        //                         .expect_call()
+        //                         .callee
+        //                         .clone()
+        //                         .expect_expr()
+        //                         .expect_member();
+        //                     obj = members.obj.expect_ident().sym.to_string();
+        //                     prop = members.prop.expect_ident().sym.to_string();
+        //                     if prop == "derive" {
+        //                         args = parent_call.obj.expect_call().args;
+        //                     }
+        //                 } else if parent_call.obj.is_ident() {
+        //                     obj = parent_call.clone().obj.expect_ident().sym.to_string();
+        //                     prop = parent_call.prop.expect_ident().sym.to_string();
+        //                     if prop.contains("derive") {
+        //                         // if(ix_accounts.get(&obj))
+        //                         args = c.clone().args;
+        //                     }
+        //                 }
 
-                        if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
-                            if prop.contains("derive") {
-                                let mut seeds_token: Vec<TokenStream> = vec![];
-                                let chaincall1prop = c
-                                    .clone()
-                                    .callee
-                                    .expect_expr()
-                                    .expect_member()
-                                    .prop
-                                    .expect_ident()
-                                    .sym
-                                    .to_string();
-                                for elem in elems {
-                                    if let Some(a) = elem {
-                                        match *(a.expr.clone()) {
-                                            Expr::Lit(Lit::Str(seedstr)) => {
-                                                let lit_vec =
-                                                    Literal::byte_string(seedstr.value.as_bytes());
-                                                seeds_token.push(quote! {
-                                                #lit_vec
-                                                });
-                                            }
-                                            Expr::Ident(ident_str) => {
-                                                let seed_ident = Ident::new(
-                                                    &ident_str.sym.to_string(),
-                                                    proc_macro2::Span::call_site(),
-                                                );
-                                                seeds_token.push(quote! {
-                                                    #seed_ident
-                                                });
-                                            }
-                                            Expr::Member(m) => {
-                                                let seed_prop = Ident::new(
-                                                    &m.prop.expect_ident().sym.to_string(),
-                                                    Span::call_site(),
-                                                );
-                                                // let seed_prop = TokenTree::Ident(Ident::new(&m.prop.expect_ident().sym.to_string(),
-                                                // Span::call_site()));
-                                                let seed_obj = Ident::new(
-                                                    &m.obj.expect_ident().sym.to_string(),
-                                                    Span::call_site(),
-                                                );
-                                                // let obj_prop_asref = format!("{}.{}.as_ref()",&m.obj.expect_ident().sym.to_string(), &m.prop.clone().expect_ident().sym.to_string());
-                                                // seeds_token.push(quote! { #obj_prop_asref });
-                                                // let dot = Punct::new('.', Spacing::Joint);
-                                                // let property_call = Group::new(Delimiter::Parenthesis, TokenStream::new()); 
-                                                // property_call.
-                                                seeds_token.push( quote!{
-                                                    #seed_obj.#seed_prop().as_ref()
-                                                })
-                                            }
-                                            _ => {}
-                                        }
-                                    };
-                                }
-                                cur_ix_acc.bump = Some(quote!{
-                                    bump
-                                });
+        //                 if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
+        //                     if prop.contains("derive") {
+        //                         let chaincall1prop = c
+        //                             .clone()
+        //                             .callee
+        //                             .expect_expr()
+        //                             .expect_member()
+        //                             .prop
+        //                             .expect_ident()
+        //                             .sym
+        //                             .to_string();
 
-                                if prop == "deriveWithBump" {
-                                    let bump_members = c.clone().args[1].expr.clone().expect_member();
-                                    let bump_prop  = Ident::new(
-                                        &bump_members.prop.expect_ident().sym.to_string(),
-                                        Span::call_site(),
-                                    );
-                                    let bump_obj = Ident::new(
-                                        &bump_members.obj.expect_ident().sym.to_string(),
-                                        Span::call_site(),
-                                    );
-                                    cur_ix_acc.bump = Some(quote!{
-                                        bump = #bump_obj.#bump_prop
-                                    })
-                                }
-                                // println!("{:#?} : \n {:#?}", obj, seeds_token);
+        //                         // if cur_ix_acc.of_type == quote!{Account} {
 
-                                if seeds_token.len() != 0 {
-                                    cur_ix_acc.seeds = Some(seeds_token.clone());
-                                    // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
-                                }
+        //                         // }
+        //                         let seeds = args[0].expr.clone().expect_array().elems;
+        //                         let mut seeds_token: Vec<TokenStream> = vec![];
+                                
+        //                         for elem in seeds {
+        //                             if let Some(a) = elem {
+        //                                 match *(a.expr.clone()) {
+        //                                     Expr::Lit(Lit::Str(seedstr)) => {
+        //                                         let lit_vec =
+        //                                             Literal::byte_string(seedstr.value.as_bytes());
+        //                                         seeds_token.push(quote! {
+        //                                         #lit_vec
+        //                                         });
+        //                                     }
+        //                                     Expr::Ident(ident_str) => {
+        //                                         let seed_ident = Ident::new(
+        //                                             &ident_str.sym.to_string(),
+        //                                             proc_macro2::Span::call_site(),
+        //                                         );
+        //                                         seeds_token.push(quote! {
+        //                                             #seed_ident
+        //                                         });
+        //                                     }
+        //                                     Expr::Member(m) => {
+        //                                         let seed_prop = Ident::new(
+        //                                             &m.prop.expect_ident().sym.to_string(),
+        //                                             Span::call_site(),
+        //                                         );
+        //                                         let seed_obj = Ident::new(
+        //                                             &m.obj.expect_ident().sym.to_string(),
+        //                                             Span::call_site(),
+        //                                         );
+        //                                         seeds_token.push( quote!{
+        //                                             #seed_obj.#seed_prop().as_ref()
+        //                                         })
+        //                                     }
+        //                                     _ => {}
+        //                                 }
+        //                             };
+        //                         }
+        //                         cur_ix_acc.bump = Some(quote!{
+        //                             bump
+        //                         });
+        //                         if seeds_token.len() != 0 {
+        //                             cur_ix_acc.seeds = Some(seeds_token.clone());
+        //                             // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
+        //                         }
 
-                                if chaincall1prop == "init" {
-                                    ix.uses_system_program = true;
-                                    cur_ix_acc.is_init = true;
-                                    if let Some(payer) = ix.signer.clone() {
-                                        cur_ix_acc.payer = Some(payer);
-                                    }
-                                }
-                            }
-                        }
-                        if obj == "SystemProgram" {
-                            let from_acc = c.clone().args[0].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
-                            let to_acc = c.clone().args[1].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
-                            let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
-                            let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
+        //                         if prop == "deriveWithBump" {
+        //                             let bump_members = c.clone().args[1].expr.clone().expect_member();
+        //                             let bump_prop  = Ident::new(
+        //                                 &bump_members.prop.expect_ident().sym.to_string(),
+        //                                 Span::call_site(),
+        //                             );
+        //                             let bump_obj = Ident::new(
+        //                                 &bump_members.obj.expect_ident().sym.to_string(),
+        //                                 Span::call_site(),
+        //                             );
+        //                             cur_ix_acc.bump = Some(quote!{
+        //                                 bump = #bump_obj.#bump_prop
+        //                             })
+        //                         }
+        //                         // println!("{:#?} : \n {:#?}", obj, seeds_token);
 
-                            ix_body.push(quote!{
-                                let transfer_accounts = Transfer {
-                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                    to: ctx.accounts.#to_acc_ident.to_account_info()
-                                };
-                                let transfer_ctx = CpiContext::new(
-                                    ctx.accounts.system_program.to_account_info(),
-                                    transfer_accounts
-                                );
-                                transfer(transfer_ctx, amount);
-                            });
-                        }
-                    }
-                    Expr::Assign(a) => {
-                        // let op = a.op;
-                        let left_members = a.clone().left.expect_expr().expect_member();
-                        let left_obj = left_members.obj.expect_ident().sym.to_string();
-                        let left_prop = left_members.prop.expect_ident().sym.to_string();
-                        if ix_accounts.contains_key(&left_obj){
-                            let left_obj_ident = Ident::new(&left_obj, proc_macro2::Span::call_site());
-                            let left_prop_ident = Ident::new(&left_prop, proc_macro2::Span::call_site());
-                            let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
-                            cur_acc.is_mut = true;
+                                
 
-                            match *(a.clone().right) {
-                                Expr::New(exp) => {
-                                    let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
-                                    let lit_type = exp.callee.expect_ident().sym.to_string();
-                                    match right_lit {
-                                        Lit::Num(num) => {
-                                            // match lit_type {
-                                            //     TsType::I64 => {
+        //                         if chaincall1prop == "init" {
+        //                             ix.uses_system_program = true;
+        //                             cur_ix_acc.is_init = true;
+        //                             if let Some(payer) = ix.signer.clone() {
+        //                                 cur_ix_acc.payer = Some(payer);
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //                 if obj == "SystemProgram" {
+        //                     let from_acc = c.clone().args[0].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
+        //                     let to_acc = c.clone().args[1].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
+        //                     let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
+        //                     let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
 
-                                            //     }
-                                            // }
-                                            let value = Literal::i64_unsuffixed(num.value as i64);
-                                            ix_body.push(quote!{
-                                                ctx.#left_obj_ident.#left_prop_ident =  #value;
-                                            });
-                                        }
-                                        _ => {}
-                                    }
-                                },
+        //                     ix_body.push(quote!{
+        //                         let transfer_accounts = Transfer {
+        //                             from: ctx.accounts.#from_acc_ident.to_account_info(),
+        //                             to: ctx.accounts.#to_acc_ident.to_account_info()
+        //                         };
+        //                         let transfer_ctx = CpiContext::new(
+        //                             ctx.accounts.system_program.to_account_info(),
+        //                             transfer_accounts
+        //                         );
+        //                         transfer(transfer_ctx, amount);
+        //                     });
+        //                 }
+        //             }
+                    // Expr::Assign(a) => {
+                    //     // let op = a.op;
+                    //     let left_members = a.clone().left.expect_expr().expect_member();
+                    //     let left_obj = left_members.obj.expect_ident().sym.to_string();
+                    //     let left_prop = left_members.prop.expect_ident().sym.to_string();
+                    //     if ix_accounts.contains_key(&left_obj){
+                    //         let left_obj_ident = Ident::new(&left_obj, proc_macro2::Span::call_site());
+                    //         let left_prop_ident = Ident::new(&left_prop, proc_macro2::Span::call_site());
+                    //         let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
+                    //         cur_acc.is_mut = true;
 
-                                Expr::Call(CallExpr { span, callee, args, type_args }) => {
-                                    let memebers = callee.expect_expr().expect_member();
-                                    let prop: &str = &memebers.prop.clone().expect_ident().sym.to_string();
-                                    match *(memebers.obj) {
-                                        Expr::Member(sub_members) => {
-                                            let sub_prop = sub_members.prop.expect_ident().sym.to_string();
-                                            let sub_obj = sub_members.obj.expect_ident().sym.to_string();
-                                            let right_sub_obj_ident = Ident::new(&sub_obj, proc_macro2::Span::call_site());
-                                            let right_sub_prop_ident = Ident::new(&sub_prop, proc_macro2::Span::call_site());
-                                            match *(args[0].expr.clone()) {
-                                                Expr::Lit(Lit::Num(num)) => {
-                                                    let value = Literal::i64_unsuffixed(num.value as i64);
-                                                    match prop {
-                                                        "add" => {
-                                                            ix_body.push(quote!{
-                                                                ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident + #value;
-                                                            });
-                                                        },
-                                                        "sub" => {
-                                                            ix_body.push(quote!{
-                                                                ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident - #value;
-                                                            });
-                                                        }
-                                                        _ => {}
-                                                    }
-                                                }
-                                                _ => {}
-                                            }
-                                        }
-                                        Expr::Ident(right_obj) => {
-                                            let right_obj = right_obj.sym.to_string();
-                                            let right_prop = memebers.prop.expect_ident().sym.to_string();
-                                            // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
-                                            // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
+                    //         match *(a.clone().right) {
+                    //             Expr::New(exp) => {
+                    //                 let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
+                    //                 let lit_type = exp.callee.expect_ident().sym.to_string();
+                    //                 match right_lit {
+                    //                     Lit::Num(num) => {
+                    //                         // match lit_type {
+                    //                         //     TsType::I64 => {
 
-                                            if right_prop == "getBump" {
-                                                let right_obj_literal = Literal::string(&right_obj);
-                                                ix_body.push(quote!{
-                                                    ctx.#left_obj_ident.#left_prop_ident = *ctx.bumps.get(#right_obj_literal).unwrap();
-                                                })
-                                            }
-                                        }
-                                        _ => {}
-                                    }
+                    //                         //     }
+                    //                         // }
+                    //                         let value = Literal::i64_unsuffixed(num.value as i64);
+                    //                         ix_body.push(quote!{
+                    //                             ctx.#left_obj_ident.#left_prop_ident =  #value;
+                    //                         });
+                    //                     }
+                    //                     _ => {}
+                    //                 }
+                    //             },
+
+                    //             Expr::Call(CallExpr { span, callee, args, type_args }) => {
+                    //                 let memebers = callee.expect_expr().expect_member();
+                    //                 let prop: &str = &memebers.prop.clone().expect_ident().sym.to_string();
+                    //                 match *(memebers.obj) {
+                    //                     Expr::Member(sub_members) => {
+                    //                         let sub_prop = sub_members.prop.expect_ident().sym.to_string();
+                    //                         let sub_obj = sub_members.obj.expect_ident().sym.to_string();
+                    //                         let right_sub_obj_ident = Ident::new(&sub_obj, proc_macro2::Span::call_site());
+                    //                         let right_sub_prop_ident = Ident::new(&sub_prop, proc_macro2::Span::call_site());
+                    //                         match *(args[0].expr.clone()) {
+                    //                             Expr::Lit(Lit::Num(num)) => {
+                    //                                 let value = Literal::i64_unsuffixed(num.value as i64);
+                    //                                 match prop {
+                    //                                     "add" => {
+                    //                                         ix_body.push(quote!{
+                    //                                             ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident + #value;
+                    //                                         });
+                    //                                     },
+                    //                                     "sub" => {
+                    //                                         ix_body.push(quote!{
+                    //                                             ctx.#left_obj_ident.#left_prop_ident = ctx.#right_sub_obj_ident.#right_sub_prop_ident - #value;
+                    //                                         });
+                    //                                     }
+                    //                                     _ => {}
+                    //                                 }
+                    //                             }
+                    //                             _ => {}
+                    //                         }
+                    //                     }
+                    //                     Expr::Ident(right_obj) => {
+                    //                         let right_obj = right_obj.sym.to_string();
+                    //                         let right_prop = memebers.prop.expect_ident().sym.to_string();
+                    //                         // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
+                    //                         // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
+
+                    //                         if right_prop == "getBump" {
+                    //                             let right_obj_literal = Literal::string(&right_obj);
+                    //                             ix_body.push(quote!{
+                    //                                 ctx.#left_obj_ident.#left_prop_ident = *ctx.bumps.get(#right_obj_literal).unwrap();
+                    //                             })
+                    //                         }
+                    //                     }
+                    //                     _ => {}
+                    //                 }
                                     
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            });
+                    //             }
+                    //             _ => {}
+                    //         }
+                    //     }
+                    // }
+            //         _ => {}
+            //     }
+            // });
 
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();

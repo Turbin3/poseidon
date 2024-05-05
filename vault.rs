@@ -35,38 +35,38 @@ pub mod VaultProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
-    #[account(seeds = [b"auth", state.key().as_ref()], bump)]
-    pub auth: UncheckedAccount<'info>,
-    #[account(init, payer = owner, seeds = [b"state", owner.key().as_ref()], bump)]
-    pub state: Account<'info, Vault>,
-    #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump)]
-    pub vault: SystemAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump)]
+    pub vault: SystemAccount<'info>,
+    #[account(init, payer = owner, seeds = [b"state", owner.key().as_ref()], bump)]
+    pub state: Account<'info, Vault>,
+    #[account(seeds = [b"auth", state.key().as_ref()], bump)]
+    pub auth: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct DepositContext<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
-    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
-    pub state: Account<'info, Vault>,
     #[account(seeds = [b"auth", state.key().as_ref()], bump = state.authBump)]
     pub auth: UncheckedAccount<'info>,
+    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
+    pub state: Account<'info, Vault>,
     #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump = state.vaultBump)]
     pub vault: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct WithdrawContext<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
-    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
-    pub state: Account<'info, Vault>,
     #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump = state.vaultBump)]
     pub vault: SystemAccount<'info>,
+    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
+    pub state: Account<'info, Vault>,
     #[account(seeds = [b"auth", state.key().as_ref()], bump = state.authBump)]
     pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 #[account]

@@ -53,11 +53,12 @@ pub fn transpile(module: &Module) {
     
     program.accounts = accounts.into_values().collect();
     program.custom_types = custom_types.clone();
+    // print!("{:#?}", program_class);
     match program_class {
         Some(c) => program.populate_from_class_expr(&c, &custom_types),
         None => panic!("Program class undefined")
     }
     let serialized_program = program.to_tokens();
-    fs::write("vault.rs", PrettyPlease::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
+    fs::write("escrow.rs", RustFmt::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
 }
 

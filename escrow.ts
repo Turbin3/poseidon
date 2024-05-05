@@ -15,8 +15,7 @@ export default class EscrowProgram {
         offerAmount: u64,
         seed: u64
     ) {
-        makerAta.withMint(makerMint)
-        .withAuthority(maker.key);
+        makerAta.derive(makerMint, maker.key)
 
         auth.derive(["auth"])
 
@@ -84,8 +83,8 @@ export default class EscrowProgram {
         escrow: EscrowState
     ) {        
         takerAta
-            .derive(takerMint, taker.key)
-            .initIfNeeded()
+            .derive(makerMint, taker.key)
+            .initIfNeeded();
 
         takerReceiveAta
             .derive(makerMint, taker.key)
