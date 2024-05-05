@@ -19,106 +19,106 @@ export default class EscrowProgram {
 
         auth.derive(["auth"])
 
-        vault.derive(["vault", escrow.key])
-            .withMint(makerMint)
-            .init()
+        // vault.derive(["vault", escrow.key])
+        //     .withMint(makerMint)
+        //     .init()
 
         escrow.derive(["escrow", maker.key, seed.toBytes()])
             .init()
 
-        escrow.maker = maker.key;
-        escrow.amount = offerAmount;
-        escrow.seed = seed;
-        escrow.makerMint = makerMint.key;
-        escrow.takerMint = takerMint.key;
+    //     escrow.maker = maker.key;
+    //     escrow.amount = offerAmount;
+    //     escrow.seed = seed;
+    //     escrow.makerMint = makerMint.key;
+    //     escrow.takerMint = takerMint.key;
 
-        TokenProgram.transfer(
-            makerAta,
-            vault,
-            maker.toAccountInfo(),
-            depositAmount,
-        )
+    //     TokenProgram.transfer(
+    //         makerAta,
+    //         vault,
+    //         maker.toAccountInfo(),
+    //         depositAmount,
+    //     )
     }
 
-    refund(
-        maker: Signer, 
-        makerAta: AssociatedTokenAccount, 
-        makerMint: Mint,
-        auth: UncheckedAccount,
-        vault: TokenAccount,
-        escrow: EscrowState
-    ) {
-        makerAta.derive(makerMint, maker.key);
-        escrow.derive(["escrow", maker.key, escrow.seed.toBytes()])
-            .has({ maker })
-            .close(maker.toAccountInfo())
+    // refund(
+    //     maker: Signer, 
+    //     makerAta: AssociatedTokenAccount, 
+    //     makerMint: Mint,
+    //     auth: UncheckedAccount,
+    //     vault: TokenAccount,
+    //     escrow: EscrowState
+    // ) {
+    //     makerAta.derive(makerMint, maker.key);
+        // escrow.derive(["escrow", maker.key, escrow.seed.toBytes()])
+        //     .has({ maker })
+        //     .close(maker.toAccountInfo())
 
-        auth.derive(["auth"])
+        // auth.derive(["auth"])
 
-        vault.derive(["vault", escrow.key])
-            .withMint(makerMint)
-            .withAuthority(auth.key);
+        // vault.derive(["vault", escrow.key])
+        //     .withMint(makerMint)
+        //     .withAuthority(auth.key);
 
-        let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
+        // let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
 
-        TokenProgram.transfer(
-            vault,
-            makerAta,
-            auth,
-            vault.balance,
-            ["vault", escrow.key]
-        )
-    }
+        // TokenProgram.transfer(
+        //     vault,
+        //     makerAta,
+        //     auth,
+        //     vault.balance,
+        //     ["vault", escrow.key]
+        // )
+    // }
 
-    take(
-        taker: Signer, 
-        maker: SystemAccount,
-        makerAta: AssociatedTokenAccount, 
-        takerAta: AssociatedTokenAccount, 
-        takerReceiveAta: AssociatedTokenAccount, 
-        makerMint: Mint,
-        takerMint: Mint,
-        auth: UncheckedAccount,
-        vault: TokenAccount,
-        escrow: EscrowState
-    ) {        
-        takerAta
-            .derive(makerMint, taker.key)
-            .initIfNeeded();
+//     take(
+//         taker: Signer, 
+//         maker: SystemAccount,
+//         makerAta: AssociatedTokenAccount, 
+//         takerAta: AssociatedTokenAccount, 
+//         takerReceiveAta: AssociatedTokenAccount, 
+//         makerMint: Mint,
+//         takerMint: Mint,
+//         auth: UncheckedAccount,
+//         vault: TokenAccount,
+//         escrow: EscrowState
+//     ) {        
+//         takerAta
+//             .derive(makerMint, taker.key)
+//             .initIfNeeded();
 
-        takerReceiveAta
-            .derive(makerMint, taker.key)
-            .initIfNeeded()
+//         takerReceiveAta
+//             .derive(makerMint, taker.key)
+//             .initIfNeeded()
 
-        makerAta.derive(makerMint, maker.key)
+//         makerAta.derive(makerMint, maker.key)
 
-        escrow.derive(["escrow", maker.key, escrow.seed.toBytes()])
-            .has({ maker, makerMint, takerMint })
-            .close(maker.toAccountInfo())
+//         escrow.derive(["escrow", maker.key, escrow.seed.toBytes()])
+//             .has({ maker, makerMint, takerMint })
+//             .close(maker.toAccountInfo())
 
-        auth.derive(["auth"])
+//         auth.derive(["auth"])
 
-        vault.derive(["vault", escrow.key])
-            .withMint(makerMint)
-            .withAuthority(auth.key)
+//         vault.derive(["vault", escrow.key])
+//             .withMint(makerMint)
+//             .withAuthority(auth.key)
 
-        TokenProgram.transfer(
-            takerAta,
-            makerAta,
-            taker.toAccountInfo(),
-            escrow.amount,
-        )
+//         TokenProgram.transfer(
+//             takerAta,
+//             makerAta,
+//             taker.toAccountInfo(),
+//             escrow.amount,
+//         )
 
-        let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
+//         let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
 
-        TokenProgram.transfer(
-            vault,
-            takerReceiveAta,
-            auth,
-            vault.balance,
-            seeds
-        )
-    }
+//         TokenProgram.transfer(
+//             vault,
+//             takerReceiveAta,
+//             auth,
+//             vault.balance,
+//             seeds
+//         )
+//     }
 }
 
 export interface EscrowState extends Account {
