@@ -24,6 +24,10 @@ export default class EscrowProgram {
         escrow.derive(["escrow", maker.key, seed.toBytes()])
             .init()
 
+        escrow.authBump = auth.getBump()
+        escrow.vaultBump = vault.getBump()
+        escrow.escrowBump = escrow.getBump()
+
         escrow.maker = maker.key;
         escrow.amount = offerAmount;
         escrow.seed = seed;
@@ -122,4 +126,6 @@ export interface EscrowState extends Account {
     amount: u64
     seed: u64
     authBump: u8
+    escrowBump: u8
+    vaultBump: u8
 }

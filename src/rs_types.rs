@@ -519,7 +519,7 @@ impl ProgramInstruction {
                                             authority: self.#auth_acc_ident.to_account_info(),
                                         };
                                         let ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-                                        transfer(ctx, #amount);
+                                        transfer(ctx, #amount_ident);
                                     })
                                 }
                             }
