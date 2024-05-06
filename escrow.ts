@@ -52,8 +52,8 @@ export default class EscrowProgram {
     ) {
         makerAta.derive(makerMint, maker.key);
         escrow.derive(["escrow", maker.key, escrow.seed.toBytes()])
-        //     .has({ maker })
-        //     .close(maker.toAccountInfo())
+            .has([ maker ])
+            .close(maker)
 
         auth.derive(["auth"])
 
@@ -93,8 +93,8 @@ export default class EscrowProgram {
         makerAta.derive(makerMint, maker.key)
 
         escrow.derive(["escrow", maker.key, escrow.seed.toBytes()])
-            // .has({ maker, makerMint, takerMint })
-            // .close(maker.toAccountInfo())
+            .has([ maker, makerMint, takerMint ])
+            .close(maker)
 
         auth.derive(["auth"])
 

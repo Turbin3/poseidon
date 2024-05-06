@@ -35,6 +35,8 @@ pub struct InstructionAccount {
     pub is_close: bool,
     pub is_mint: bool,
     pub ata: Option<Ata>,
+    pub has_one: Vec<String>,
+    pub close: Option<String>,
     pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<TokenStream>,
     pub payer: Option<String>,
@@ -54,6 +56,8 @@ impl InstructionAccount {
             is_initifneeded: false,
             is_mint: false,
             ata: None,
+            has_one:vec![],
+            close:None,
             seeds: None,
             bump: None,
             payer: None,
@@ -87,6 +91,16 @@ impl InstructionAccount {
             }
             None => quote!(),
         };
+        let close = match &self.close {
+            Some(c) => {
+                let close_acc = Ident::new(c, proc_macro2::Span::call_site());
+                
+                quote! {
+                    close = #close_acc,
+                }
+            }
+            None => quote!(),
+        };
 
         let seeds = match &self.seeds {
             Some(s) => {
@@ -102,7 +116,7 @@ impl InstructionAccount {
         let bump = match &self.bump {
             Some(b) => {
                 quote! {
-                    #b
+                    #b,
                 }
             }
             None => quote! {},
@@ -119,15 +133,20 @@ impl InstructionAccount {
                 }
             }
         };
-        let init = match self.is_initifneeded {
-            true => quote! {init_if_needed, #payer,},
-            false => {
-                if self.is_mut {
-                    quote! {mut,}
-                } else {
-                    quote! {}
-                }
+        let mut has : TokenStream = quote!{}; 
+        if self.has_one.len() != 0 {
+            let mut has_vec : Vec<TokenStream> = vec![];
+            for h in &self.has_one {
+                let h_ident = Ident::new(h, proc_macro2::Span::call_site());
+                has_vec.push(quote!{
+                    has_one = #h_ident
+                })
             }
+            has = quote!{ #(#has_vec),*,};
+        }
+        let init_if_needed = match self.is_initifneeded {
+            true => quote! {init_if_needed, #payer,},
+            false => quote!{}
         };
         if self.is_mint {
             constraints = quote! {}
@@ -135,9 +154,12 @@ impl InstructionAccount {
             constraints = quote! {
                 #[account(
                     #init
+                    #init_if_needed
                     #seeds
                     #ata
+                    #has
                     #bump
+                    #close
 
                 )]
             }
@@ -338,6 +360,14 @@ impl ProgramInstruction {
                                 if prop == "derive" {
                                     derive_args = parent_call.obj.expect_call().args;
                                 }
+                            } else if members.obj.is_call() {
+                                let sub_members = members.clone().obj.expect_call().callee.expect_expr().expect_member();
+                                obj = sub_members.obj.expect_ident().sym.to_string();
+                                prop = sub_members.prop.expect_ident().sym.to_string();
+                                if prop == "derive" {
+                                    derive_args = members.obj.expect_call().args;
+                                }
+
                             }
                         } else if parent_call.obj.is_ident() {
                             obj = parent_call.clone().obj.expect_ident().sym.to_string();
@@ -360,6 +390,11 @@ impl ProgramInstruction {
                                     .expect_ident()
                                     .sym
                                     .to_string();
+                                let mut chaincall2prop = String::from("");
+                                if c.clone().callee.expect_expr().expect_member().obj.is_call(){
+                                    chaincall2prop = c.clone().callee.expect_expr().expect_member().obj.expect_call().callee.expect_expr().expect_member().prop.expect_ident().sym.to_string();
+                                }
+                                
 
                                 if cur_ix_acc.type_str == "AssociatedTokenAccount" {
                                     let mint = derive_args[0].expr.clone().expect_ident().sym.to_string();
@@ -488,6 +523,20 @@ impl ProgramInstruction {
                                         cur_ix_acc.payer = Some(payer);
                                     }
                                 }
+                                if chaincall1prop == "close" {
+                                    cur_ix_acc.close = Some(c.clone().args[0].expr.clone().expect_ident().sym.to_string().to_case(Case::Snake));
+                                }
+                                if chaincall2prop == "has" {
+                                    let elems = c.clone().callee.expect_expr().expect_member().obj.expect_call().args[0].expr.clone().expect_array().elems;
+                                    let mut has_one:Vec<String> = vec![];
+                                    for elem in elems {
+                                        if let Some(e) = elem {
+                                            has_one.push(e.expr.expect_ident().sym.to_string());
+                                        }
+                                    }
+                                    cur_ix_acc.has_one = has_one;
+                                }
+                                
                             }
                         }
                         if obj == "SystemProgram" && prop == "transfer" {
@@ -574,8 +623,8 @@ impl ProgramInstruction {
                         let left_obj = left_members.obj.expect_ident().sym.to_string();
                         let left_prop = left_members.prop.expect_ident().sym.to_string();
                         if ix_accounts.contains_key(&left_obj){
-                            let left_obj_ident = Ident::new(&left_obj, proc_macro2::Span::call_site());
-                            let left_prop_ident = Ident::new(&left_prop, proc_macro2::Span::call_site());
+                            let left_obj_ident = Ident::new(&left_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                            let left_prop_ident = Ident::new(&left_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
                             let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
                             cur_acc.is_mut = true;
 
@@ -606,8 +655,8 @@ impl ProgramInstruction {
                                         Expr::Member(sub_members) => {
                                             let sub_prop = sub_members.prop.expect_ident().sym.to_string();
                                             let sub_obj = sub_members.obj.expect_ident().sym.to_string();
-                                            let right_sub_obj_ident = Ident::new(&sub_obj, proc_macro2::Span::call_site());
-                                            let right_sub_prop_ident = Ident::new(&sub_prop, proc_macro2::Span::call_site());
+                                            let right_sub_obj_ident = Ident::new(&sub_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let right_sub_prop_ident = Ident::new(&sub_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             match *(args[0].expr.clone()) {
                                                 Expr::Lit(Lit::Num(num)) => {
                                                     let value = Literal::i64_unsuffixed(num.value as i64);
@@ -647,8 +696,8 @@ impl ProgramInstruction {
                                 Expr::Member(m) => {
                                     let right_obj = m.obj.expect_ident().sym.to_string();
                                     let right_prop = m.prop.expect_ident().sym.to_string();
-                                    let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
-                                    let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
+                                    let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    let right_prop_ident = Ident::new(&right_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
                                     ix_body.push(quote!{
                                         ctx.accounts.#left_obj_ident.#left_prop_ident =  ctx.accounts.#right_obj_ident.#right_prop_ident;
                                     });

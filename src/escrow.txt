@@ -21,7 +21,7 @@ Some(
                     183,
                 ),
                 hi: BytePos(
-                    3449,
+                    3378,
                 ),
                 ctxt: #0,
             },
@@ -126,10 +126,10 @@ Some(
                     ClassMethod {
                         span: Span {
                             lo: BytePos(
-                                1403,
+                                1355,
                             ),
                             hi: BytePos(
-                                2114,
+                                2050,
                             ),
                             ctxt: #0,
                         },
@@ -137,10 +137,10 @@ Some(
                             Ident {
                                 span: Span {
                                     lo: BytePos(
-                                        1403,
+                                        1355,
                                     ),
                                     hi: BytePos(
-                                        1409,
+                                        1361,
                                     ),
                                     ctxt: #0,
                                 },
@@ -153,10 +153,10 @@ Some(
                                 Param {
                                     span: Span {
                                         lo: BytePos(
-                                            1419,
+                                            1371,
                                         ),
                                         hi: BytePos(
-                                            1432,
+                                            1384,
                                         ),
                                         ctxt: #0,
                                     },
@@ -166,10 +166,10 @@ Some(
                                             id: Ident {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1419,
+                                                        1371,
                                                     ),
                                                     hi: BytePos(
-                                                        1432,
+                                                        1384,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -180,10 +180,10 @@ Some(
                                                 TsTypeAnn {
                                                     span: Span {
                                                         lo: BytePos(
-                                                            1424,
+                                                            1376,
                                                         ),
                                                         hi: BytePos(
-                                                            1432,
+                                                            1384,
                                                         ),
                                                         ctxt: #0,
                                                     },
@@ -191,10 +191,10 @@ Some(
                                                         TsTypeRef {
                                                             span: Span {
                                                                 lo: BytePos(
-                                                                    1426,
+                                                                    1378,
                                                                 ),
                                                                 hi: BytePos(
-                                                                    1432,
+                                                                    1384,
                                                                 ),
                                                                 ctxt: #0,
                                                             },
@@ -202,10 +202,10 @@ Some(
                                                                 Ident {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1426,
+                                                                            1378,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1432,
+                                                                            1384,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -224,10 +224,10 @@ Some(
                                 Param {
                                     span: Span {
                                         lo: BytePos(
-                                            1443,
+                                            1395,
                                         ),
                                         hi: BytePos(
-                                            1475,
+                                            1427,
                                         ),
                                         ctxt: #0,
                                     },
@@ -237,10 +237,10 @@ Some(
                                             id: Ident {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1443,
+                                                        1395,
                                                     ),
                                                     hi: BytePos(
-                                                        1475,
+                                                        1427,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -251,10 +251,10 @@ Some(
                                                 TsTypeAnn {
                                                     span: Span {
                                                         lo: BytePos(
-                                                            1451,
+                                                            1403,
                                                         ),
                                                         hi: BytePos(
-                                                            1475,
+                                                            1427,
                                                         ),
                                                         ctxt: #0,
                                                     },
@@ -262,10 +262,10 @@ Some(
                                                         TsTypeRef {
                                                             span: Span {
                                                                 lo: BytePos(
-                                                                    1453,
+                                                                    1405,
                                                                 ),
                                                                 hi: BytePos(
-                                                                    1475,
+                                                                    1427,
                                                                 ),
                                                                 ctxt: #0,
                                                             },
@@ -273,10 +273,10 @@ Some(
                                                                 Ident {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1453,
+                                                                            1405,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1475,
+                                                                            1427,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -295,10 +295,10 @@ Some(
                                 Param {
                                     span: Span {
                                         lo: BytePos(
-                                            1486,
+                                            1438,
                                         ),
                                         hi: BytePos(
-                                            1501,
+                                            1453,
                                         ),
                                         ctxt: #0,
                                     },
@@ -308,10 +308,10 @@ Some(
                                             id: Ident {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1486,
+                                                        1438,
                                                     ),
                                                     hi: BytePos(
-                                                        1501,
+                                                        1453,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -322,10 +322,10 @@ Some(
                                                 TsTypeAnn {
                                                     span: Span {
                                                         lo: BytePos(
-                                                            1495,
+                                                            1447,
                                                         ),
                                                         hi: BytePos(
-                                                            1501,
+                                                            1453,
                                                         ),
                                                         ctxt: #0,
                                                     },
@@ -333,10 +333,10 @@ Some(
                                                         TsTypeRef {
                                                             span: Span {
                                                                 lo: BytePos(
-                                                                    1497,
+                                                                    1449,
                                                                 ),
                                                                 hi: BytePos(
-                                                                    1501,
+                                                                    1453,
                                                                 ),
                                                                 ctxt: #0,
                                                             },
@@ -344,10 +344,10 @@ Some(
                                                                 Ident {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1497,
+                                                                            1449,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1501,
+                                                                            1453,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -366,10 +366,10 @@ Some(
                                 Param {
                                     span: Span {
                                         lo: BytePos(
-                                            1511,
+                                            1463,
                                         ),
                                         hi: BytePos(
-                                            1533,
+                                            1485,
                                         ),
                                         ctxt: #0,
                                     },
@@ -379,10 +379,10 @@ Some(
                                             id: Ident {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1511,
+                                                        1463,
                                                     ),
                                                     hi: BytePos(
-                                                        1533,
+                                                        1485,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -393,10 +393,10 @@ Some(
                                                 TsTypeAnn {
                                                     span: Span {
                                                         lo: BytePos(
-                                                            1515,
+                                                            1467,
                                                         ),
                                                         hi: BytePos(
-                                                            1533,
+                                                            1485,
                                                         ),
                                                         ctxt: #0,
                                                     },
@@ -404,10 +404,10 @@ Some(
                                                         TsTypeRef {
                                                             span: Span {
                                                                 lo: BytePos(
-                                                                    1517,
+                                                                    1469,
                                                                 ),
                                                                 hi: BytePos(
-                                                                    1533,
+                                                                    1485,
                                                                 ),
                                                                 ctxt: #0,
                                                             },
@@ -415,10 +415,10 @@ Some(
                                                                 Ident {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1517,
+                                                                            1469,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1533,
+                                                                            1485,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -437,10 +437,10 @@ Some(
                                 Param {
                                     span: Span {
                                         lo: BytePos(
-                                            1543,
+                                            1495,
                                         ),
                                         hi: BytePos(
-                                            1562,
+                                            1514,
                                         ),
                                         ctxt: #0,
                                     },
@@ -450,10 +450,10 @@ Some(
                                             id: Ident {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1543,
+                                                        1495,
                                                     ),
                                                     hi: BytePos(
-                                                        1562,
+                                                        1514,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -464,10 +464,10 @@ Some(
                                                 TsTypeAnn {
                                                     span: Span {
                                                         lo: BytePos(
-                                                            1548,
+                                                            1500,
                                                         ),
                                                         hi: BytePos(
-                                                            1562,
+                                                            1514,
                                                         ),
                                                         ctxt: #0,
                                                     },
@@ -475,10 +475,10 @@ Some(
                                                         TsTypeRef {
                                                             span: Span {
                                                                 lo: BytePos(
-                                                                    1550,
+                                                                    1502,
                                                                 ),
                                                                 hi: BytePos(
-                                                                    1562,
+                                                                    1514,
                                                                 ),
                                                                 ctxt: #0,
                                                             },
@@ -486,10 +486,10 @@ Some(
                                                                 Ident {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1550,
+                                                                            1502,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1562,
+                                                                            1514,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -508,10 +508,10 @@ Some(
                                 Param {
                                     span: Span {
                                         lo: BytePos(
-                                            1572,
+                                            1524,
                                         ),
                                         hi: BytePos(
-                                            1591,
+                                            1543,
                                         ),
                                         ctxt: #0,
                                     },
@@ -521,10 +521,10 @@ Some(
                                             id: Ident {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1572,
+                                                        1524,
                                                     ),
                                                     hi: BytePos(
-                                                        1591,
+                                                        1543,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -535,10 +535,10 @@ Some(
                                                 TsTypeAnn {
                                                     span: Span {
                                                         lo: BytePos(
-                                                            1578,
+                                                            1530,
                                                         ),
                                                         hi: BytePos(
-                                                            1591,
+                                                            1543,
                                                         ),
                                                         ctxt: #0,
                                                     },
@@ -546,10 +546,10 @@ Some(
                                                         TsTypeRef {
                                                             span: Span {
                                                                 lo: BytePos(
-                                                                    1580,
+                                                                    1532,
                                                                 ),
                                                                 hi: BytePos(
-                                                                    1591,
+                                                                    1543,
                                                                 ),
                                                                 ctxt: #0,
                                                             },
@@ -557,10 +557,10 @@ Some(
                                                                 Ident {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1580,
+                                                                            1532,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1591,
+                                                                            1543,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -580,10 +580,10 @@ Some(
                             decorators: [],
                             span: Span {
                                 lo: BytePos(
-                                    1403,
+                                    1355,
                                 ),
                                 hi: BytePos(
-                                    2114,
+                                    2050,
                                 ),
                                 ctxt: #0,
                             },
@@ -591,10 +591,10 @@ Some(
                                 BlockStmt {
                                     span: Span {
                                         lo: BytePos(
-                                            1598,
+                                            1550,
                                         ),
                                         hi: BytePos(
-                                            2114,
+                                            2050,
                                         ),
                                         ctxt: #0,
                                     },
@@ -603,10 +603,10 @@ Some(
                                             ExprStmt {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1608,
+                                                        1560,
                                                     ),
                                                     hi: BytePos(
-                                                        1646,
+                                                        1598,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -614,10 +614,10 @@ Some(
                                                     CallExpr {
                                                         span: Span {
                                                             lo: BytePos(
-                                                                1608,
+                                                                1560,
                                                             ),
                                                             hi: BytePos(
-                                                                1645,
+                                                                1597,
                                                             ),
                                                             ctxt: #0,
                                                         },
@@ -626,10 +626,10 @@ Some(
                                                                 MemberExpr {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1608,
+                                                                            1560,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1623,
+                                                                            1575,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -637,10 +637,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1608,
+                                                                                    1560,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1616,
+                                                                                    1568,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -652,10 +652,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1617,
+                                                                                    1569,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1623,
+                                                                                    1575,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -673,10 +673,10 @@ Some(
                                                                     Ident {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1624,
+                                                                                1576,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1633,
+                                                                                1585,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -691,10 +691,10 @@ Some(
                                                                     MemberExpr {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1635,
+                                                                                1587,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1644,
+                                                                                1596,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -702,10 +702,10 @@ Some(
                                                                             Ident {
                                                                                 span: Span {
                                                                                     lo: BytePos(
-                                                                                        1635,
+                                                                                        1587,
                                                                                     ),
                                                                                     hi: BytePos(
-                                                                                        1640,
+                                                                                        1592,
                                                                                     ),
                                                                                     ctxt: #0,
                                                                                 },
@@ -717,10 +717,10 @@ Some(
                                                                             Ident {
                                                                                 span: Span {
                                                                                     lo: BytePos(
-                                                                                        1641,
+                                                                                        1593,
                                                                                     ),
                                                                                     hi: BytePos(
-                                                                                        1644,
+                                                                                        1596,
                                                                                     ),
                                                                                     ctxt: #0,
                                                                                 },
@@ -741,10 +741,10 @@ Some(
                                             ExprStmt {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1655,
+                                                        1607,
                                                     ),
                                                     hi: BytePos(
-                                                        1784,
+                                                        1720,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -752,10 +752,10 @@ Some(
                                                     CallExpr {
                                                         span: Span {
                                                             lo: BytePos(
-                                                                1655,
+                                                                1607,
                                                             ),
                                                             hi: BytePos(
-                                                                1784,
+                                                                1720,
                                                             ),
                                                             ctxt: #0,
                                                         },
@@ -764,10 +764,10 @@ Some(
                                                                 MemberExpr {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1655,
+                                                                            1607,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1761,
+                                                                            1713,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -775,10 +775,10 @@ Some(
                                                                         CallExpr {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1655,
+                                                                                    1607,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1742,
+                                                                                    1694,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -787,10 +787,10 @@ Some(
                                                                                     MemberExpr {
                                                                                         span: Span {
                                                                                             lo: BytePos(
-                                                                                                1655,
+                                                                                                1607,
                                                                                             ),
                                                                                             hi: BytePos(
-                                                                                                1731,
+                                                                                                1683,
                                                                                             ),
                                                                                             ctxt: #0,
                                                                                         },
@@ -798,10 +798,10 @@ Some(
                                                                                             CallExpr {
                                                                                                 span: Span {
                                                                                                     lo: BytePos(
-                                                                                                        1655,
+                                                                                                        1607,
                                                                                                     ),
                                                                                                     hi: BytePos(
-                                                                                                        1714,
+                                                                                                        1666,
                                                                                                     ),
                                                                                                     ctxt: #0,
                                                                                                 },
@@ -810,10 +810,10 @@ Some(
                                                                                                         MemberExpr {
                                                                                                             span: Span {
                                                                                                                 lo: BytePos(
-                                                                                                                    1655,
+                                                                                                                    1607,
                                                                                                                 ),
                                                                                                                 hi: BytePos(
-                                                                                                                    1668,
+                                                                                                                    1620,
                                                                                                                 ),
                                                                                                                 ctxt: #0,
                                                                                                             },
@@ -821,10 +821,10 @@ Some(
                                                                                                                 Ident {
                                                                                                                     span: Span {
                                                                                                                         lo: BytePos(
-                                                                                                                            1655,
+                                                                                                                            1607,
                                                                                                                         ),
                                                                                                                         hi: BytePos(
-                                                                                                                            1661,
+                                                                                                                            1613,
                                                                                                                         ),
                                                                                                                         ctxt: #0,
                                                                                                                     },
@@ -836,10 +836,10 @@ Some(
                                                                                                                 Ident {
                                                                                                                     span: Span {
                                                                                                                         lo: BytePos(
-                                                                                                                            1662,
+                                                                                                                            1614,
                                                                                                                         ),
                                                                                                                         hi: BytePos(
-                                                                                                                            1668,
+                                                                                                                            1620,
                                                                                                                         ),
                                                                                                                         ctxt: #0,
                                                                                                                     },
@@ -857,10 +857,10 @@ Some(
                                                                                                             ArrayLit {
                                                                                                                 span: Span {
                                                                                                                     lo: BytePos(
-                                                                                                                        1669,
+                                                                                                                        1621,
                                                                                                                     ),
                                                                                                                     hi: BytePos(
-                                                                                                                        1713,
+                                                                                                                        1665,
                                                                                                                     ),
                                                                                                                     ctxt: #0,
                                                                                                                 },
@@ -873,10 +873,10 @@ Some(
                                                                                                                                     Str {
                                                                                                                                         span: Span {
                                                                                                                                             lo: BytePos(
-                                                                                                                                                1670,
+                                                                                                                                                1622,
                                                                                                                                             ),
                                                                                                                                             hi: BytePos(
-                                                                                                                                                1678,
+                                                                                                                                                1630,
                                                                                                                                             ),
                                                                                                                                             ctxt: #0,
                                                                                                                                         },
@@ -896,10 +896,10 @@ Some(
                                                                                                                                 MemberExpr {
                                                                                                                                     span: Span {
                                                                                                                                         lo: BytePos(
-                                                                                                                                            1680,
+                                                                                                                                            1632,
                                                                                                                                         ),
                                                                                                                                         hi: BytePos(
-                                                                                                                                            1689,
+                                                                                                                                            1641,
                                                                                                                                         ),
                                                                                                                                         ctxt: #0,
                                                                                                                                     },
@@ -907,10 +907,10 @@ Some(
                                                                                                                                         Ident {
                                                                                                                                             span: Span {
                                                                                                                                                 lo: BytePos(
-                                                                                                                                                    1680,
+                                                                                                                                                    1632,
                                                                                                                                                 ),
                                                                                                                                                 hi: BytePos(
-                                                                                                                                                    1685,
+                                                                                                                                                    1637,
                                                                                                                                                 ),
                                                                                                                                                 ctxt: #0,
                                                                                                                                             },
@@ -922,10 +922,10 @@ Some(
                                                                                                                                         Ident {
                                                                                                                                             span: Span {
                                                                                                                                                 lo: BytePos(
-                                                                                                                                                    1686,
+                                                                                                                                                    1638,
                                                                                                                                                 ),
                                                                                                                                                 hi: BytePos(
-                                                                                                                                                    1689,
+                                                                                                                                                    1641,
                                                                                                                                                 ),
                                                                                                                                                 ctxt: #0,
                                                                                                                                             },
@@ -944,10 +944,10 @@ Some(
                                                                                                                                 CallExpr {
                                                                                                                                     span: Span {
                                                                                                                                         lo: BytePos(
-                                                                                                                                            1691,
+                                                                                                                                            1643,
                                                                                                                                         ),
                                                                                                                                         hi: BytePos(
-                                                                                                                                            1712,
+                                                                                                                                            1664,
                                                                                                                                         ),
                                                                                                                                         ctxt: #0,
                                                                                                                                     },
@@ -956,10 +956,10 @@ Some(
                                                                                                                                             MemberExpr {
                                                                                                                                                 span: Span {
                                                                                                                                                     lo: BytePos(
-                                                                                                                                                        1691,
+                                                                                                                                                        1643,
                                                                                                                                                     ),
                                                                                                                                                     hi: BytePos(
-                                                                                                                                                        1710,
+                                                                                                                                                        1662,
                                                                                                                                                     ),
                                                                                                                                                     ctxt: #0,
                                                                                                                                                 },
@@ -967,10 +967,10 @@ Some(
                                                                                                                                                     MemberExpr {
                                                                                                                                                         span: Span {
                                                                                                                                                             lo: BytePos(
-                                                                                                                                                                1691,
+                                                                                                                                                                1643,
                                                                                                                                                             ),
                                                                                                                                                             hi: BytePos(
-                                                                                                                                                                1702,
+                                                                                                                                                                1654,
                                                                                                                                                             ),
                                                                                                                                                             ctxt: #0,
                                                                                                                                                         },
@@ -978,10 +978,10 @@ Some(
                                                                                                                                                             Ident {
                                                                                                                                                                 span: Span {
                                                                                                                                                                     lo: BytePos(
-                                                                                                                                                                        1691,
+                                                                                                                                                                        1643,
                                                                                                                                                                     ),
                                                                                                                                                                     hi: BytePos(
-                                                                                                                                                                        1697,
+                                                                                                                                                                        1649,
                                                                                                                                                                     ),
                                                                                                                                                                     ctxt: #0,
                                                                                                                                                                 },
@@ -993,10 +993,10 @@ Some(
                                                                                                                                                             Ident {
                                                                                                                                                                 span: Span {
                                                                                                                                                                     lo: BytePos(
-                                                                                                                                                                        1698,
+                                                                                                                                                                        1650,
                                                                                                                                                                     ),
                                                                                                                                                                     hi: BytePos(
-                                                                                                                                                                        1702,
+                                                                                                                                                                        1654,
                                                                                                                                                                     ),
                                                                                                                                                                     ctxt: #0,
                                                                                                                                                                 },
@@ -1010,10 +1010,10 @@ Some(
                                                                                                                                                     Ident {
                                                                                                                                                         span: Span {
                                                                                                                                                             lo: BytePos(
-                                                                                                                                                                1703,
+                                                                                                                                                                1655,
                                                                                                                                                             ),
                                                                                                                                                             hi: BytePos(
-                                                                                                                                                                1710,
+                                                                                                                                                                1662,
                                                                                                                                                             ),
                                                                                                                                                             ctxt: #0,
                                                                                                                                                         },
@@ -1042,10 +1042,10 @@ Some(
                                                                                             Ident {
                                                                                                 span: Span {
                                                                                                     lo: BytePos(
-                                                                                                        1728,
+                                                                                                        1680,
                                                                                                     ),
                                                                                                     hi: BytePos(
-                                                                                                        1731,
+                                                                                                        1683,
                                                                                                     ),
                                                                                                     ctxt: #0,
                                                                                                 },
@@ -1059,34 +1059,37 @@ Some(
                                                                             args: [
                                                                                 ExprOrSpread {
                                                                                     spread: None,
-                                                                                    expr: Object(
-                                                                                        ObjectLit {
+                                                                                    expr: Array(
+                                                                                        ArrayLit {
                                                                                             span: Span {
                                                                                                 lo: BytePos(
-                                                                                                    1732,
+                                                                                                    1684,
                                                                                                 ),
                                                                                                 hi: BytePos(
-                                                                                                    1741,
+                                                                                                    1693,
                                                                                                 ),
                                                                                                 ctxt: #0,
                                                                                             },
-                                                                                            props: [
-                                                                                                Prop(
-                                                                                                    Shorthand(
-                                                                                                        Ident {
-                                                                                                            span: Span {
-                                                                                                                lo: BytePos(
-                                                                                                                    1734,
-                                                                                                                ),
-                                                                                                                hi: BytePos(
-                                                                                                                    1739,
-                                                                                                                ),
-                                                                                                                ctxt: #0,
+                                                                                            elems: [
+                                                                                                Some(
+                                                                                                    ExprOrSpread {
+                                                                                                        spread: None,
+                                                                                                        expr: Ident(
+                                                                                                            Ident {
+                                                                                                                span: Span {
+                                                                                                                    lo: BytePos(
+                                                                                                                        1686,
+                                                                                                                    ),
+                                                                                                                    hi: BytePos(
+                                                                                                                        1691,
+                                                                                                                    ),
+                                                                                                                    ctxt: #0,
+                                                                                                                },
+                                                                                                                sym: "maker",
+                                                                                                                optional: false,
                                                                                                             },
-                                                                                                            sym: "maker",
-                                                                                                            optional: false,
-                                                                                                        },
-                                                                                                    ),
+                                                                                                        ),
+                                                                                                    },
                                                                                                 ),
                                                                                             ],
                                                                                         },
@@ -1100,10 +1103,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1756,
+                                                                                    1708,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1761,
+                                                                                    1713,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1117,64 +1120,19 @@ Some(
                                                         args: [
                                                             ExprOrSpread {
                                                                 spread: None,
-                                                                expr: Call(
-                                                                    CallExpr {
+                                                                expr: Ident(
+                                                                    Ident {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1762,
+                                                                                1714,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1783,
+                                                                                1719,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
-                                                                        callee: Expr(
-                                                                            Member(
-                                                                                MemberExpr {
-                                                                                    span: Span {
-                                                                                        lo: BytePos(
-                                                                                            1762,
-                                                                                        ),
-                                                                                        hi: BytePos(
-                                                                                            1781,
-                                                                                        ),
-                                                                                        ctxt: #0,
-                                                                                    },
-                                                                                    obj: Ident(
-                                                                                        Ident {
-                                                                                            span: Span {
-                                                                                                lo: BytePos(
-                                                                                                    1762,
-                                                                                                ),
-                                                                                                hi: BytePos(
-                                                                                                    1767,
-                                                                                                ),
-                                                                                                ctxt: #0,
-                                                                                            },
-                                                                                            sym: "maker",
-                                                                                            optional: false,
-                                                                                        },
-                                                                                    ),
-                                                                                    prop: Ident(
-                                                                                        Ident {
-                                                                                            span: Span {
-                                                                                                lo: BytePos(
-                                                                                                    1768,
-                                                                                                ),
-                                                                                                hi: BytePos(
-                                                                                                    1781,
-                                                                                                ),
-                                                                                                ctxt: #0,
-                                                                                            },
-                                                                                            sym: "toAccountInfo",
-                                                                                            optional: false,
-                                                                                        },
-                                                                                    ),
-                                                                                },
-                                                                            ),
-                                                                        ),
-                                                                        args: [],
-                                                                        type_args: None,
+                                                                        sym: "maker",
+                                                                        optional: false,
                                                                     },
                                                                 ),
                                                             },
@@ -1188,10 +1146,10 @@ Some(
                                             ExprStmt {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1794,
+                                                        1730,
                                                     ),
                                                     hi: BytePos(
-                                                        1815,
+                                                        1751,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -1199,10 +1157,10 @@ Some(
                                                     CallExpr {
                                                         span: Span {
                                                             lo: BytePos(
-                                                                1794,
+                                                                1730,
                                                             ),
                                                             hi: BytePos(
-                                                                1815,
+                                                                1751,
                                                             ),
                                                             ctxt: #0,
                                                         },
@@ -1211,10 +1169,10 @@ Some(
                                                                 MemberExpr {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1794,
+                                                                            1730,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1805,
+                                                                            1741,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -1222,10 +1180,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1794,
+                                                                                    1730,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1798,
+                                                                                    1734,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1237,10 +1195,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1799,
+                                                                                    1735,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1805,
+                                                                                    1741,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1258,10 +1216,10 @@ Some(
                                                                     ArrayLit {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1806,
+                                                                                1742,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1814,
+                                                                                1750,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1274,10 +1232,10 @@ Some(
                                                                                             Str {
                                                                                                 span: Span {
                                                                                                     lo: BytePos(
-                                                                                                        1807,
+                                                                                                        1743,
                                                                                                     ),
                                                                                                     hi: BytePos(
-                                                                                                        1813,
+                                                                                                        1749,
                                                                                                     ),
                                                                                                     ctxt: #0,
                                                                                                 },
@@ -1304,10 +1262,10 @@ Some(
                                             ExprStmt {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1825,
+                                                        1761,
                                                     ),
                                                     hi: BytePos(
-                                                        1881,
+                                                        1817,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -1315,10 +1273,10 @@ Some(
                                                     CallExpr {
                                                         span: Span {
                                                             lo: BytePos(
-                                                                1825,
+                                                                1761,
                                                             ),
                                                             hi: BytePos(
-                                                                1881,
+                                                                1817,
                                                             ),
                                                             ctxt: #0,
                                                         },
@@ -1327,10 +1285,10 @@ Some(
                                                                 MemberExpr {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1825,
+                                                                            1761,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1837,
+                                                                            1773,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -1338,10 +1296,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1825,
+                                                                                    1761,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1830,
+                                                                                    1766,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1353,10 +1311,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1831,
+                                                                                    1767,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1837,
+                                                                                    1773,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1374,10 +1332,10 @@ Some(
                                                                     ArrayLit {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1838,
+                                                                                1774,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1859,
+                                                                                1795,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1390,10 +1348,10 @@ Some(
                                                                                             Str {
                                                                                                 span: Span {
                                                                                                     lo: BytePos(
-                                                                                                        1839,
+                                                                                                        1775,
                                                                                                     ),
                                                                                                     hi: BytePos(
-                                                                                                        1846,
+                                                                                                        1782,
                                                                                                     ),
                                                                                                     ctxt: #0,
                                                                                                 },
@@ -1413,10 +1371,10 @@ Some(
                                                                                         MemberExpr {
                                                                                             span: Span {
                                                                                                 lo: BytePos(
-                                                                                                    1848,
+                                                                                                    1784,
                                                                                                 ),
                                                                                                 hi: BytePos(
-                                                                                                    1858,
+                                                                                                    1794,
                                                                                                 ),
                                                                                                 ctxt: #0,
                                                                                             },
@@ -1424,10 +1382,10 @@ Some(
                                                                                                 Ident {
                                                                                                     span: Span {
                                                                                                         lo: BytePos(
-                                                                                                            1848,
+                                                                                                            1784,
                                                                                                         ),
                                                                                                         hi: BytePos(
-                                                                                                            1854,
+                                                                                                            1790,
                                                                                                         ),
                                                                                                         ctxt: #0,
                                                                                                     },
@@ -1439,10 +1397,10 @@ Some(
                                                                                                 Ident {
                                                                                                     span: Span {
                                                                                                         lo: BytePos(
-                                                                                                            1855,
+                                                                                                            1791,
                                                                                                         ),
                                                                                                         hi: BytePos(
-                                                                                                            1858,
+                                                                                                            1794,
                                                                                                         ),
                                                                                                         ctxt: #0,
                                                                                                     },
@@ -1464,10 +1422,10 @@ Some(
                                                                     Ident {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1861,
+                                                                                1797,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1870,
+                                                                                1806,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1482,10 +1440,10 @@ Some(
                                                                     MemberExpr {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1872,
+                                                                                1808,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1880,
+                                                                                1816,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1493,10 +1451,10 @@ Some(
                                                                             Ident {
                                                                                 span: Span {
                                                                                     lo: BytePos(
-                                                                                        1872,
+                                                                                        1808,
                                                                                     ),
                                                                                     hi: BytePos(
-                                                                                        1876,
+                                                                                        1812,
                                                                                     ),
                                                                                     ctxt: #0,
                                                                                 },
@@ -1508,10 +1466,10 @@ Some(
                                                                             Ident {
                                                                                 span: Span {
                                                                                     lo: BytePos(
-                                                                                        1877,
+                                                                                        1813,
                                                                                     ),
                                                                                     hi: BytePos(
-                                                                                        1880,
+                                                                                        1816,
                                                                                     ),
                                                                                     ctxt: #0,
                                                                                 },
@@ -1533,10 +1491,10 @@ Some(
                                                 VarDecl {
                                                     span: Span {
                                                         lo: BytePos(
-                                                            1891,
+                                                            1827,
                                                         ),
                                                         hi: BytePos(
-                                                            1946,
+                                                            1882,
                                                         ),
                                                         ctxt: #0,
                                                     },
@@ -1546,10 +1504,10 @@ Some(
                                                         VarDeclarator {
                                                             span: Span {
                                                                 lo: BytePos(
-                                                                    1895,
+                                                                    1831,
                                                                 ),
                                                                 hi: BytePos(
-                                                                    1945,
+                                                                    1881,
                                                                 ),
                                                                 ctxt: #0,
                                                             },
@@ -1558,10 +1516,10 @@ Some(
                                                                     id: Ident {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1895,
+                                                                                1831,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1900,
+                                                                                1836,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1572,10 +1530,10 @@ Some(
                                                                         TsTypeAnn {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1900,
+                                                                                    1836,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1907,
+                                                                                    1843,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1583,10 +1541,10 @@ Some(
                                                                                 TsTypeRef {
                                                                                     span: Span {
                                                                                         lo: BytePos(
-                                                                                            1902,
+                                                                                            1838,
                                                                                         ),
                                                                                         hi: BytePos(
-                                                                                            1907,
+                                                                                            1843,
                                                                                         ),
                                                                                         ctxt: #0,
                                                                                     },
@@ -1594,10 +1552,10 @@ Some(
                                                                                         Ident {
                                                                                             span: Span {
                                                                                                 lo: BytePos(
-                                                                                                    1902,
+                                                                                                    1838,
                                                                                                 ),
                                                                                                 hi: BytePos(
-                                                                                                    1907,
+                                                                                                    1843,
                                                                                                 ),
                                                                                                 ctxt: #0,
                                                                                             },
@@ -1617,10 +1575,10 @@ Some(
                                                                     ArrayLit {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1910,
+                                                                                1846,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1945,
+                                                                                1881,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1633,10 +1591,10 @@ Some(
                                                                                             Str {
                                                                                                 span: Span {
                                                                                                     lo: BytePos(
-                                                                                                        1911,
+                                                                                                        1847,
                                                                                                     ),
                                                                                                     hi: BytePos(
-                                                                                                        1917,
+                                                                                                        1853,
                                                                                                     ),
                                                                                                     ctxt: #0,
                                                                                                 },
@@ -1656,10 +1614,10 @@ Some(
                                                                                         CallExpr {
                                                                                             span: Span {
                                                                                                 lo: BytePos(
-                                                                                                    1919,
+                                                                                                    1855,
                                                                                                 ),
                                                                                                 hi: BytePos(
-                                                                                                    1944,
+                                                                                                    1880,
                                                                                                 ),
                                                                                                 ctxt: #0,
                                                                                             },
@@ -1668,10 +1626,10 @@ Some(
                                                                                                     MemberExpr {
                                                                                                         span: Span {
                                                                                                             lo: BytePos(
-                                                                                                                1919,
+                                                                                                                1855,
                                                                                                             ),
                                                                                                             hi: BytePos(
-                                                                                                                1942,
+                                                                                                                1878,
                                                                                                             ),
                                                                                                             ctxt: #0,
                                                                                                         },
@@ -1679,10 +1637,10 @@ Some(
                                                                                                             MemberExpr {
                                                                                                                 span: Span {
                                                                                                                     lo: BytePos(
-                                                                                                                        1919,
+                                                                                                                        1855,
                                                                                                                     ),
                                                                                                                     hi: BytePos(
-                                                                                                                        1934,
+                                                                                                                        1870,
                                                                                                                     ),
                                                                                                                     ctxt: #0,
                                                                                                                 },
@@ -1690,10 +1648,10 @@ Some(
                                                                                                                     Ident {
                                                                                                                         span: Span {
                                                                                                                             lo: BytePos(
-                                                                                                                                1919,
+                                                                                                                                1855,
                                                                                                                             ),
                                                                                                                             hi: BytePos(
-                                                                                                                                1925,
+                                                                                                                                1861,
                                                                                                                             ),
                                                                                                                             ctxt: #0,
                                                                                                                         },
@@ -1705,10 +1663,10 @@ Some(
                                                                                                                     Ident {
                                                                                                                         span: Span {
                                                                                                                             lo: BytePos(
-                                                                                                                                1926,
+                                                                                                                                1862,
                                                                                                                             ),
                                                                                                                             hi: BytePos(
-                                                                                                                                1934,
+                                                                                                                                1870,
                                                                                                                             ),
                                                                                                                             ctxt: #0,
                                                                                                                         },
@@ -1722,10 +1680,10 @@ Some(
                                                                                                             Ident {
                                                                                                                 span: Span {
                                                                                                                     lo: BytePos(
-                                                                                                                        1935,
+                                                                                                                        1871,
                                                                                                                     ),
                                                                                                                     hi: BytePos(
-                                                                                                                        1942,
+                                                                                                                        1878,
                                                                                                                     ),
                                                                                                                     ctxt: #0,
                                                                                                                 },
@@ -1756,10 +1714,10 @@ Some(
                                             ExprStmt {
                                                 span: Span {
                                                     lo: BytePos(
-                                                        1956,
+                                                        1892,
                                                     ),
                                                     hi: BytePos(
-                                                        2108,
+                                                        2044,
                                                     ),
                                                     ctxt: #0,
                                                 },
@@ -1767,10 +1725,10 @@ Some(
                                                     CallExpr {
                                                         span: Span {
                                                             lo: BytePos(
-                                                                1956,
+                                                                1892,
                                                             ),
                                                             hi: BytePos(
-                                                                2108,
+                                                                2044,
                                                             ),
                                                             ctxt: #0,
                                                         },
@@ -1779,10 +1737,10 @@ Some(
                                                                 MemberExpr {
                                                                     span: Span {
                                                                         lo: BytePos(
-                                                                            1956,
+                                                                            1892,
                                                                         ),
                                                                         hi: BytePos(
-                                                                            1977,
+                                                                            1913,
                                                                         ),
                                                                         ctxt: #0,
                                                                     },
@@ -1790,10 +1748,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1956,
+                                                                                    1892,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1968,
+                                                                                    1904,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1805,10 +1763,10 @@ Some(
                                                                         Ident {
                                                                             span: Span {
                                                                                 lo: BytePos(
-                                                                                    1969,
+                                                                                    1905,
                                                                                 ),
                                                                                 hi: BytePos(
-                                                                                    1977,
+                                                                                    1913,
                                                                                 ),
                                                                                 ctxt: #0,
                                                                             },
@@ -1826,10 +1784,10 @@ Some(
                                                                     Ident {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                1991,
+                                                                                1927,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                1996,
+                                                                                1932,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1844,10 +1802,10 @@ Some(
                                                                     Ident {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                2010,
+                                                                                1946,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                2018,
+                                                                                1954,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1862,10 +1820,10 @@ Some(
                                                                     Ident {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                2032,
+                                                                                1968,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                2036,
+                                                                                1972,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1880,10 +1838,10 @@ Some(
                                                                     MemberExpr {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                2050,
+                                                                                1986,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                2063,
+                                                                                1999,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1891,14 +1849,14 @@ Some(
                                                                             Ident {
                                                                                 span: Span {
                                                                                     lo: BytePos(
-                                                                                        2050,
+                                                                                        1986,
                                                                                     ),
                                                                                     hi: BytePos(
-                                                                                        2055,
+                                                                                        1992,
                                                                                     ),
                                                                                     ctxt: #0,
                                                                                 },
-                                                                                sym: "vault",
+                                                                                sym: "escrow",
                                                                                 optional: false,
                                                                             },
                                                                         ),
@@ -1906,14 +1864,14 @@ Some(
                                                                             Ident {
                                                                                 span: Span {
                                                                                     lo: BytePos(
-                                                                                        2056,
+                                                                                        1993,
                                                                                     ),
                                                                                     hi: BytePos(
-                                                                                        2063,
+                                                                                        1999,
                                                                                     ),
                                                                                     ctxt: #0,
                                                                                 },
-                                                                                sym: "balance",
+                                                                                sym: "amount",
                                                                                 optional: false,
                                                                             },
                                                                         ),
@@ -1926,10 +1884,10 @@ Some(
                                                                     ArrayLit {
                                                                         span: Span {
                                                                             lo: BytePos(
-                                                                                2077,
+                                                                                2013,
                                                                             ),
                                                                             hi: BytePos(
-                                                                                2098,
+                                                                                2034,
                                                                             ),
                                                                             ctxt: #0,
                                                                         },
@@ -1942,10 +1900,10 @@ Some(
                                                                                             Str {
                                                                                                 span: Span {
                                                                                                     lo: BytePos(
-                                                                                                        2078,
+                                                                                                        2014,
                                                                                                     ),
                                                                                                     hi: BytePos(
-                                                                                                        2085,
+                                                                                                        2021,
                                                                                                     ),
                                                                                                     ctxt: #0,
                                                                                                 },
@@ -1965,10 +1923,10 @@ Some(
                                                                                         MemberExpr {
                                                                                             span: Span {
                                                                                                 lo: BytePos(
-                                                                                                    2087,
+                                                                                                    2023,
                                                                                                 ),
                                                                                                 hi: BytePos(
-                                                                                                    2097,
+                                                                                                    2033,
                                                                                                 ),
                                                                                                 ctxt: #0,
                                                                                             },
@@ -1976,10 +1934,10 @@ Some(
                                                                                                 Ident {
                                                                                                     span: Span {
                                                                                                         lo: BytePos(
-                                                                                                            2087,
+                                                                                                            2023,
                                                                                                         ),
                                                                                                         hi: BytePos(
-                                                                                                            2093,
+                                                                                                            2029,
                                                                                                         ),
                                                                                                         ctxt: #0,
                                                                                                     },
@@ -1991,10 +1949,10 @@ Some(
                                                                                                 Ident {
                                                                                                     span: Span {
                                                                                                         lo: BytePos(
-                                                                                                            2094,
+                                                                                                            2030,
                                                                                                         ),
                                                                                                         hi: BytePos(
-                                                                                                            2097,
+                                                                                                            2033,
                                                                                                         ),
                                                                                                         ctxt: #0,
                                                                                                     },
