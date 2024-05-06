@@ -35,9 +35,9 @@ export default class EscrowProgram {
         escrow.takerMint = takerMint.key;
 
         TokenProgram.transfer(
-            makerAta.toAccountInfo(),
-            vault.toAccountInfo(),
-            maker.toAccountInfo(),
+            makerAta,
+            vault,
+            maker,
             depositAmount,
         )
     }
@@ -62,9 +62,9 @@ export default class EscrowProgram {
         // let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
 
         TokenProgram.transfer(
-            vault.toAccountInfo(),
-            makerAta.toAccountInfo(),
-            auth.toAccountInfo(),
+            vault,
+            makerAta,
+            auth,
             escrow.amount,
             ["vault", escrow.key]
         )
@@ -101,18 +101,18 @@ export default class EscrowProgram {
         vault.derive(["vault", escrow.key], makerMint, auth.key)
 
         TokenProgram.transfer(
-            takerAta.toAccountInfo(),
-            makerAta.toAccountInfo(),
-            taker.toAccountInfo(),
+            takerAta,
+            makerAta,
+            taker,
             escrow.amount,
         )
 
         // let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
 
         TokenProgram.transfer(
-            vault.toAccountInfo(),
-            takerReceiveAta.toAccountInfo(),
-            auth.toAccountInfo(),
+            vault,
+            takerReceiveAta,
+            auth,
             escrow.amount,
             seeds
         )

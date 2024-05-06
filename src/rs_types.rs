@@ -491,8 +491,8 @@ impl ProgramInstruction {
                             }
                         }
                         if obj == "SystemProgram" && prop == "transfer" {
-                            let from_acc = c.clone().args[0].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
-                            let to_acc = c.clone().args[1].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
+                            let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                            let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
                             let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
                             let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
 
@@ -509,9 +509,9 @@ impl ProgramInstruction {
                             });
                         }
                         if obj == "TokenProgram" && prop == "transfer" {
-                            let from_acc = c.clone().args[0].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
-                            let to_acc = c.clone().args[1].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
-                            let auth_acc = c.clone().args[2].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
+                            let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                            let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                            let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
                             let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                             let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
