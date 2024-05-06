@@ -1,7 +1,7 @@
 use convert_case::{Case, Casing};
 use core::panic;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -20,8 +20,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Ata {
-    mint : String,
-    authority : String 
+    mint: String,
+    authority: String,
 }
 #[derive(Debug)]
 pub struct InstructionAccount {
@@ -34,7 +34,7 @@ pub struct InstructionAccount {
     pub is_initifneeded: bool,
     pub is_close: bool,
     pub is_mint: bool,
-    pub ata:Option<Ata>,
+    pub ata: Option<Ata>,
     pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<TokenStream>,
     pub payer: Option<String>,
@@ -53,7 +53,7 @@ impl InstructionAccount {
             is_init: false,
             is_initifneeded: false,
             is_mint: false,
-            ata:None,
+            ata: None,
             seeds: None,
             bump: None,
             payer: None,
@@ -77,15 +77,15 @@ impl InstructionAccount {
         };
 
         let ata = match &self.ata {
-          Some(a) => {
-            let mint = Ident::new(&a.mint, proc_macro2::Span::call_site());
-            let authority = Ident::new(&a.authority, proc_macro2::Span::call_site());
-            quote!{
-                associated_token::mint = #mint,
-                associated_token::authority = #authority,
+            Some(a) => {
+                let mint = Ident::new(&a.mint, proc_macro2::Span::call_site());
+                let authority = Ident::new(&a.authority, proc_macro2::Span::call_site());
+                quote! {
+                    associated_token::mint = #mint,
+                    associated_token::authority = #authority,
+                }
             }
-          }
-          None => quote!()  
+            None => quote!(),
         };
 
         let seeds = match &self.seeds {
@@ -101,11 +101,11 @@ impl InstructionAccount {
 
         let bump = match &self.bump {
             Some(b) => {
-                quote!{
+                quote! {
                     #b
                 }
-            },
-            None => quote!{}
+            }
+            None => quote! {},
         };
 
         // need to also declare payer in case of init
@@ -130,15 +130,15 @@ impl InstructionAccount {
             }
         };
         if self.is_mint {
-            constraints = quote!{}
-        }else {
-            constraints = quote!{
+            constraints = quote! {}
+        } else {
+            constraints = quote! {
                 #[account(
                     #init
                     #seeds
                     #ata
                     #bump
-    
+
                 )]
             }
         }
@@ -209,7 +209,7 @@ impl ProgramInstruction {
             // TODO: Make this an actual Enum set handle it correctly
             if STANDARD_TYPES.contains(&of_type.as_str()) {
                 ix_arguments.push(InstructionArgument {
-                    name : snaked_name,
+                    name: snaked_name,
                     of_type: rs_type_from_str(&of_type)
                         .expect(&format!("Invalid type: {}", of_type)),
                     optional,
@@ -219,8 +219,12 @@ impl ProgramInstruction {
                     ix.signer = Some(name.clone());
                     ix_accounts.insert(
                         name.clone(),
-                        InstructionAccount::new(snaked_name.clone(), quote! { Signer<'info> },of_type,
-                        optional),
+                        InstructionAccount::new(
+                            snaked_name.clone(),
+                            quote! { Signer<'info> },
+                            of_type,
+                            optional,
+                        ),
                     );
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                     (*cur_ix_acc).is_mut = true;
@@ -243,7 +247,6 @@ impl ProgramInstruction {
                             of_type,
                             optional,
                         ),
-                        
                     );
                     ix.uses_system_program = true;
 
@@ -289,8 +292,14 @@ impl ProgramInstruction {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
                 ix_accounts.insert(
                     name.clone(),
-                    InstructionAccount::new(snaked_name.clone(), quote! { Account<'info, #ty> }, of_type, optional),
+                    InstructionAccount::new(
+                        snaked_name.clone(),
+                        quote! { Account<'info, #ty> },
+                        of_type,
+                        optional,
+                    ),
                 );
+                ix.uses_system_program = true;
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
@@ -373,13 +382,11 @@ impl ProgramInstruction {
                                         }
                                     );
                                     cur_ix_acc.is_mut = true;
-                                    
                                 }
 
                                 if cur_ix_acc.type_str != "AssociatedTokenAccount"{
                                     let seeds = derive_args[0].expr.clone().expect_array().elems;
                                     let mut seeds_token: Vec<TokenStream> = vec![];
-                                    
                                     for elem in seeds {
                                         if let Some(a) = elem {
                                             match *(a.expr.clone()) {
@@ -412,6 +419,34 @@ impl ProgramInstruction {
                                                         #seed_obj.#seed_prop().as_ref()
                                                     })
                                                 }
+                                                Expr::Call(c) => {
+                                                    let seed_members = c.callee.expect_expr().expect_member();
+                                                    if seed_members.obj.is_ident(){
+                                                        let seed_obj_ident = Ident::new(
+                                                            &seed_members.obj.expect_ident().sym.to_string(),
+                                                            Span::call_site(),
+                                                        );
+                                                        if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
+                                                            seeds_token.push( quote!{
+                                                                #seed_obj_ident.to_le_bytes().as_ref()
+                                                            })
+                                                        }
+                                                    } else if seed_members.obj.is_member() {
+                                                        if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
+                                                            let seed_obj_ident = Ident::new(
+                                                                &seed_members.obj.clone().expect_member().obj.expect_ident().sym.to_string(),
+                                                                Span::call_site(),
+                                                            );
+                                                            let seed_prop_ident = Ident::new(
+                                                                &seed_members.obj.expect_member().prop.expect_ident().sym.to_string(),
+                                                                Span::call_site(),
+                                                            );
+                                                            seeds_token.push( quote!{
+                                                                #seed_obj_ident.#seed_prop_ident.to_le_bytes().as_ref()
+                                                            })
+                                                        }
+                                                    }
+                                                }
                                                 _ => {}
                                             }
                                         };
@@ -424,8 +459,6 @@ impl ProgramInstruction {
                                         // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
                                     }
                                 }
-                                
-
                                 if prop == "deriveWithBump" {
                                     let bump_members = c.clone().args[1].expr.clone().expect_member();
                                     let bump_prop  = Ident::new(
@@ -441,9 +474,6 @@ impl ProgramInstruction {
                                     })
                                 }
                                 // println!("{:#?} : \n {:#?}", obj, seeds_token);
-
-                                
-
                                 if chaincall1prop == "init" {
                                     ix.uses_system_program = true;
                                     cur_ix_acc.is_init = true;
@@ -460,7 +490,7 @@ impl ProgramInstruction {
                                 }
                             }
                         }
-                        if obj == "SystemProgram" {
+                        if obj == "SystemProgram" && prop == "transfer" {
                             let from_acc = c.clone().args[0].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
                             let to_acc = c.clone().args[1].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
                             let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
@@ -478,53 +508,64 @@ impl ProgramInstruction {
                                 transfer(transfer_ctx, amount);
                             });
                         }
-                        if obj == "TokenProgram" {
+                        if obj == "TokenProgram" && prop == "transfer" {
                             let from_acc = c.clone().args[0].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
                             let to_acc = c.clone().args[1].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
                             let auth_acc = c.clone().args[2].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
                             let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                             let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site()); 
-                            let amount : String;
-                            let mut amount_prop : Option<String> = None;
-                            if c.clone().args[3].expr.is_call() {
-                                amount = c.clone().args[3].expr.clone().expect_call().callee.expect_expr().expect_member().obj.expect_ident().sym.to_string();
-                                amount_prop = Some(c.clone().args[3].expr.clone().expect_call().callee.expect_expr().expect_member().prop.expect_ident().sym.to_string());
-                            } else {
-                                amount = c.clone().args[3].expr.clone().expect_ident().sym.to_string();
+                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                            let amount : TokenStream;
+                            // let mut amount_prop : Option<String> = None;
+                            match *(c.clone().args[3].expr.clone()) {
+                                Expr::Member(m) => {
+                                    let amount_obj = m.obj.expect_ident().sym.to_string();
+                                    let amount_prop = m.prop.expect_ident().sym.to_string();
+                                    let amount_obj_ident = Ident::new(&amount_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    let amount_prop_ident = Ident::new(&amount_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    amount = quote!{
+                                        #amount_obj_ident.#amount_prop_ident
+                                    }
+                                }
+                                Expr::Ident(i) => {
+                                    let amount_str = i.sym.to_string();
+                                    let amount_ident = Ident::new(&amount_str.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    amount = quote!{
+                                        #amount_ident
+                                    }
+                                }
+                                _ => {
+                                    panic!("amount not  provided in proper format")
+                                }
                             }
-                            let amount_ident = Ident::new(&amount.to_case(Case::Snake), proc_macro2::Span::call_site());
-                            
                             if let Some(cur_ix_acc) = ix_accounts.get(&from_acc){
                                 if cur_ix_acc.type_str == "TokenAccount" {
                                     ix_body.push(quote!{
                                         let cpi_accounts = Transfer {
-                                            from: self.vault.to_account_info(),
-                                            to: self.taker_receive_ata.to_account_info(),
-                                            authority: self.auth.to_account_info(),
+                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                            to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                            authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                         };
                                         let signer_seeds = &[
                                             &b"auth"[..],
-                                            &[self.escrow.auth_bump],
+                                            &[ctx.accounts.escrow.auth_bump],
                                         ];
                                         let binding = [&signer_seeds[..]];
-                                        let ctx = CpiContext::new_with_signer(self.token_program.to_account_info(), cpi_accounts, &binding);
-                                        transfer(ctx, self.vault.amount)
+                                        let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+                                        transfer(ctx, #amount);
                                     });
                                 } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
                                     ix_body.push(quote!{
                                         let cpi_accounts = Transfer {
-                                            from: self.#from_acc_ident.to_account_info(),
-                                            to: self.#to_acc_ident.to_account_info(),
-                                            authority: self.#auth_acc_ident.to_account_info(),
+                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                            to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                            authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                         };
-                                        let ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-                                        transfer(ctx, #amount_ident);
+                                        let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                        transfer(ctx, #amount);
                                     })
                                 }
                             }
-
-                            
                         }
                     }
                     Expr::Assign(a) => {
@@ -602,7 +643,6 @@ impl ProgramInstruction {
                                         }
                                         _ => {}
                                     }
-                                    
                                 }
                                 Expr::Member(m) => {
                                     let right_obj = m.obj.expect_ident().sym.to_string();
@@ -669,7 +709,7 @@ impl ProgramInstruction {
             accounts.push(quote! {
                 pub associated_token_program: Program<'info, AssociatedToken>,
             })
-        } 
+        }
         if self.uses_token_program {
             accounts.push(quote! {
                 pub token_program: Program<'info, Token>,
@@ -749,7 +789,10 @@ impl ProgramAccount {
             .fields
             .iter()
             .map(|field| {
-                let field_name = Ident::new(&field.name.to_case(Case::Snake), proc_macro2::Span::call_site());
+                let field_name = Ident::new(
+                    &field.name.to_case(Case::Snake),
+                    proc_macro2::Span::call_site(),
+                );
                 let field_type: Ident = Ident::new(
                     field.of_type.split("#").next().unwrap_or(""),
                     proc_macro2::Span::call_site(),

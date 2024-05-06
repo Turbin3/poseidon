@@ -15,19 +15,154 @@ pub mod EscrowProgram {
         ctx.accounts.escrow.makerMint = ctx.accounts.makerMint.key;
         ctx.accounts.escrow.takerMint = ctx.accounts.takerMint.key;
         let cpi_accounts = Transfer {
-            from: self.maker_ata.to_account_info(),
-            to: self.vault.to_account_info(),
-            authority: self.maker.to_account_info(),
+            from: ctx.accounts.maker_ata.to_account_info(),
+            to: ctx.accounts.vault.to_account_info(),
+            authority: ctx.accounts.maker.to_account_info(),
         };
-        let ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        let ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            cpi_accounts,
+        );
         transfer(ctx, deposit_amount);
+        Ok(())
+    }
+    pub fn refund(ctx: Context<RefundContext>) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.vault.to_account_info(),
+            to: ctx.accounts.maker_ata.to_account_info(),
+            authority: ctx.accounts.auth.to_account_info(),
+        };
+        let signer_seeds = &[&b"auth"[..], &[ctx.accounts.escrow.auth_bump]];
+        let binding = [&signer_seeds[..]];
+        let ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            cpi_accounts,
+            &binding,
+        );
+        transfer(ctx, escrow.amount);
+        Ok(())
+    }
+    pub fn take(ctx: Context<TakeContext>) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.taker_ata.to_account_info(),
+            to: ctx.accounts.maker_ata.to_account_info(),
+            authority: ctx.accounts.taker.to_account_info(),
+        };
+        let ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            cpi_accounts,
+        );
+        transfer(ctx, escrow.amount);
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.vault.to_account_info(),
+            to: ctx.accounts.taker_receive_ata.to_account_info(),
+            authority: ctx.accounts.auth.to_account_info(),
+        };
+        let signer_seeds = &[&b"auth"[..], &[ctx.accounts.escrow.auth_bump]];
+        let binding = [&signer_seeds[..]];
+        let ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            cpi_accounts,
+            &binding,
+        );
+        transfer(ctx, escrow.amount);
         Ok(())
     }
 }
 #[derive(Accounts)]
 pub struct MakeContext<'info> {
-    #[account(mut, seeds = [b"escrow", maker.key().as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [b"vault",
+        escrow.key().as_ref()],
+        associated_token::mint = maker_mint,
+        associated_token::authority = auth,
+        bump
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(seeds = [b"auth"], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        associated_token::mint = maker_mint,
+        associated_token::authority = maker,
+    )]
+    pub maker_ata: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [b"escrow",
+        maker.key().as_ref(),
+        seed.to_le_bytes().as_ref()],
+        bump
+    )]
     pub escrow: Account<'info, EscrowState>,
+    pub maker_mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    pub taker_mint: Account<'info, Mint>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct RefundContext<'info> {
+    #[account(
+        mut,
+        associated_token::mint = maker_mint,
+        associated_token::authority = maker,
+    )]
+    pub maker_ata: Account<'info, TokenAccount>,
+    pub maker_mint: Account<'info, Mint>,
+    #[account(seeds = [b"auth"], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    #[account(
+        seeds = [b"escrow",
+        maker.key().as_ref(),
+        escrow.seed.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub escrow: Account<'info, EscrowState>,
+    #[account(
+        mut,
+        seeds = [b"vault",
+        escrow.key().as_ref()],
+        associated_token::mint = maker_mint,
+        associated_token::authority = auth,
+        bump
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct TakeContext<'info> {
+    #[account(
+        init_if_needed,
+        payer = taker,
+        associated_token::mint = maker_mint,
+        associated_token::authority = taker,
+    )]
+    pub taker_receive_ata: Account<'info, TokenAccount>,
+    #[account(seeds = [b"auth"], bump)]
+    pub auth: UncheckedAccount<'info>,
+    #[account(
+        seeds = [b"escrow",
+        maker.key().as_ref(),
+        escrow.seed.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub escrow: Account<'info, EscrowState>,
+    pub taker_mint: Account<'info, Mint>,
+    #[account(
+        init_if_needed,
+        payer = taker,
+        associated_token::mint = maker_mint,
+        associated_token::authority = taker,
+    )]
+    pub taker_ata: Account<'info, TokenAccount>,
     #[account(
         mut,
         seeds = [b"vault",
@@ -43,12 +178,11 @@ pub struct MakeContext<'info> {
         associated_token::authority = maker,
     )]
     pub maker_ata: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    #[account(seeds = [b"auth"], bump)]
-    pub auth: UncheckedAccount<'info>,
     pub maker_mint: Account<'info, Mint>,
-    pub taker_mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub maker: SystemAccount<'info>,
+    #[account(mut)]
+    pub taker: Signer<'info>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
