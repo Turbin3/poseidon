@@ -19,6 +19,7 @@ use crate::{
 };
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct Ata {
     mint: String,
     authority: String,
@@ -202,6 +203,75 @@ impl ProgramInstruction {
             uses_associated_token_program: false,
         }
     }
+    pub fn get_seeds(seeds : Vec<Option<ExprOrSpread>>) -> Vec<TokenStream> {
+        let mut seeds_token: Vec<TokenStream> = vec![];
+        for elem in seeds {
+            if let Some(a) = elem {
+                match *(a.expr.clone()) {
+                    Expr::Lit(Lit::Str(seedstr)) => {
+                        let lit_vec =
+                            Literal::byte_string(seedstr.value.as_bytes());
+                        seeds_token.push(quote! {
+                        #lit_vec
+                        });
+                    }
+                    Expr::Ident(ident_str) => {
+                        let seed_ident = Ident::new(
+                            &ident_str.sym.to_string(),
+                            proc_macro2::Span::call_site(),
+                        );
+                        seeds_token.push(quote! {
+                            #seed_ident
+                        });
+                    }
+                    Expr::Member(m) => {
+                        let seed_prop = Ident::new(
+                            &m.prop.expect_ident().sym.to_string(),
+                            Span::call_site(),
+                        );
+                        let seed_obj = Ident::new(
+                            &m.obj.expect_ident().sym.to_string(),
+                            Span::call_site(),
+                        );
+                        seeds_token.push( quote!{
+                            #seed_obj.#seed_prop().as_ref()
+                        })
+                    }
+                    Expr::Call(c) => {
+                        let seed_members = c.callee.expect_expr().expect_member();
+                        if seed_members.obj.is_ident(){
+                            let seed_obj_ident = Ident::new(
+                                &seed_members.obj.expect_ident().sym.to_string(),
+                                Span::call_site(),
+                            );
+                            if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
+                                seeds_token.push( quote!{
+                                    #seed_obj_ident.to_le_bytes().as_ref()
+                                })
+                            }
+                        } else if seed_members.obj.is_member() {
+                            if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
+                                let seed_obj_ident = Ident::new(
+                                    &seed_members.obj.clone().expect_member().obj.expect_ident().sym.to_string(),
+                                    Span::call_site(),
+                                );
+                                let seed_prop_ident = Ident::new(
+                                    &seed_members.obj.expect_member().prop.expect_ident().sym.to_string(),
+                                    Span::call_site(),
+                                );
+                                seeds_token.push( quote!{
+                                    #seed_obj_ident.#seed_prop_ident.to_le_bytes().as_ref()
+                                })
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            };
+        }
+        seeds_token
+        
+    }
 
     pub fn from_class_method(
         c: &ClassMethod,
@@ -335,379 +405,341 @@ impl ProgramInstruction {
             .iter()
             .for_each(|s| {
                 // println!("start : {:#?}", s);
-                let s: Box<Expr> = s.clone().expect_expr().expr;
-                match *s {
-                    Expr::Call(c) => {
-                        let parent_call = c.clone().callee.expect_expr().expect_member();
-
-                        let members: MemberExpr;
-                        let mut obj: String = String::from("");
-                        let mut prop: String = String::from("");
-                        let mut derive_args: Vec<ExprOrSpread> = vec![] ;
-
-                        if parent_call.obj.is_call() {
-                            members = parent_call
-                                .obj
-                                .clone()
-                                .expect_call()
-                                .callee
-                                .clone()
-                                .expect_expr()
-                                .expect_member();
-                            if members.obj.is_ident(){
-                                obj = members.obj.expect_ident().sym.to_string();
-                                prop = members.prop.expect_ident().sym.to_string();
-                                if prop == "derive" {
-                                    derive_args = parent_call.obj.expect_call().args;
-                                }
-                            } else if members.obj.is_call() {
-                                let sub_members = members.clone().obj.expect_call().callee.expect_expr().expect_member();
-                                obj = sub_members.obj.expect_ident().sym.to_string();
-                                prop = sub_members.prop.expect_ident().sym.to_string();
-                                if prop == "derive" {
-                                    derive_args = members.obj.expect_call().args;
-                                }
-
-                            }
-                        } else if parent_call.obj.is_ident() {
-                            obj = parent_call.clone().obj.expect_ident().sym.to_string();
-                            prop = parent_call.prop.expect_ident().sym.to_string();
-                            if prop.contains("derive") {
-                                // if(ix_accounts.get(&obj))
-                                derive_args = c.clone().args;
-                            }
-                        }
-
-                        if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
-                            if prop.contains("derive") {
-                                // println!("{:#?}", cur_ix_acc.type_str);
-                                let chaincall1prop = c
-                                    .clone()
-                                    .callee
-                                    .expect_expr()
-                                    .expect_member()
-                                    .prop
-                                    .expect_ident()
-                                    .sym
-                                    .to_string();
-                                let mut chaincall2prop = String::from("");
-                                if c.clone().callee.expect_expr().expect_member().obj.is_call(){
-                                    chaincall2prop = c.clone().callee.expect_expr().expect_member().obj.expect_call().callee.expect_expr().expect_member().prop.expect_ident().sym.to_string();
-                                }
-                                
-
-                                if cur_ix_acc.type_str == "AssociatedTokenAccount" {
-                                    let mint = derive_args[0].expr.clone().expect_ident().sym.to_string();
-                                    let ata_auth = derive_args[1].expr.clone().expect_member().obj.expect_ident().sym.to_string();
-                                    cur_ix_acc.ata = Some(
-                                        Ata {
-                                            mint: mint.to_case(Case::Snake),
-                                            authority: ata_auth.to_case(Case::Snake)
+                match s.clone() {
+                    Stmt::Expr(e) => {
+                        let s = e.expr;
+                        match *s {
+                            Expr::Call(c) => {
+                                let parent_call = c.clone().callee.expect_expr().expect_member();
+        
+                                let members: MemberExpr;
+                                let mut obj: String = String::from("");
+                                let mut prop: String = String::from("");
+                                let mut derive_args: Vec<ExprOrSpread> = vec![] ;
+        
+                                if parent_call.obj.is_call() {
+                                    members = parent_call
+                                        .obj
+                                        .clone()
+                                        .expect_call()
+                                        .callee
+                                        .clone()
+                                        .expect_expr()
+                                        .expect_member();
+                                    if members.obj.is_ident(){
+                                        obj = members.obj.expect_ident().sym.to_string();
+                                        prop = members.prop.expect_ident().sym.to_string();
+                                        if prop == "derive" {
+                                            derive_args = parent_call.obj.expect_call().args;
                                         }
-                                    );
-                                    cur_ix_acc.is_mut = true;
-
-                                } else if cur_ix_acc.type_str == "TokenAccount" {
-                                    let mint = derive_args[1].expr.clone().expect_ident().sym.to_string();
-                                    let ata_auth = derive_args[2].expr.clone().expect_member().obj.expect_ident().sym.to_string();
-                                    cur_ix_acc.ata = Some(
-                                        Ata {
-                                            mint: mint.to_case(Case::Snake),
-                                            authority: ata_auth.to_case(Case::Snake)
+                                    } else if members.obj.is_call() {
+                                        let sub_members = members.clone().obj.expect_call().callee.expect_expr().expect_member();
+                                        obj = sub_members.obj.expect_ident().sym.to_string();
+                                        prop = sub_members.prop.expect_ident().sym.to_string();
+                                        if prop == "derive" {
+                                            derive_args = members.obj.expect_call().args;
                                         }
-                                    );
-                                    cur_ix_acc.is_mut = true;
+        
+                                    }
+                                } else if parent_call.obj.is_ident() {
+                                    obj = parent_call.clone().obj.expect_ident().sym.to_string();
+                                    prop = parent_call.prop.expect_ident().sym.to_string();
+                                    if prop.contains("derive") {
+                                        // if(ix_accounts.get(&obj))
+                                        derive_args = c.clone().args;
+                                    }
                                 }
-
-                                if cur_ix_acc.type_str != "AssociatedTokenAccount"{
-                                    let seeds = derive_args[0].expr.clone().expect_array().elems;
-                                    let mut seeds_token: Vec<TokenStream> = vec![];
-                                    for elem in seeds {
-                                        if let Some(a) = elem {
-                                            match *(a.expr.clone()) {
-                                                Expr::Lit(Lit::Str(seedstr)) => {
-                                                    let lit_vec =
-                                                        Literal::byte_string(seedstr.value.as_bytes());
-                                                    seeds_token.push(quote! {
-                                                    #lit_vec
+        
+                                if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
+                                    if prop.contains("derive") {
+                                        // println!("{:#?}", cur_ix_acc.type_str);
+                                        let chaincall1prop = c
+                                            .clone()
+                                            .callee
+                                            .expect_expr()
+                                            .expect_member()
+                                            .prop
+                                            .expect_ident()
+                                            .sym
+                                            .to_string();
+                                        let mut chaincall2prop = String::from("");
+                                        if c.clone().callee.expect_expr().expect_member().obj.is_call(){
+                                            chaincall2prop = c.clone().callee.expect_expr().expect_member().obj.expect_call().callee.expect_expr().expect_member().prop.expect_ident().sym.to_string();
+                                        }
+                                        
+        
+                                        if cur_ix_acc.type_str == "AssociatedTokenAccount" {
+                                            let mint = derive_args[0].expr.clone().expect_ident().sym.to_string();
+                                            let ata_auth = derive_args[1].expr.clone().expect_member().obj.expect_ident().sym.to_string();
+                                            cur_ix_acc.ata = Some(
+                                                Ata {
+                                                    mint: mint.to_case(Case::Snake),
+                                                    authority: ata_auth.to_case(Case::Snake)
+                                                }
+                                            );
+                                            cur_ix_acc.is_mut = true;
+                                        } else if cur_ix_acc.type_str == "TokenAccount" {
+                                            let mint = derive_args[1].expr.clone().expect_ident().sym.to_string();
+                                            let ata_auth = derive_args[2].expr.clone().expect_member().obj.expect_ident().sym.to_string();
+                                            cur_ix_acc.ata = Some(
+                                                Ata {
+                                                    mint: mint.to_case(Case::Snake),
+                                                    authority: ata_auth.to_case(Case::Snake)
+                                                }
+                                            );
+                                            cur_ix_acc.is_mut = true;
+                                        }
+        
+                                        if cur_ix_acc.type_str != "AssociatedTokenAccount"{
+                                            let seeds = derive_args[0].expr.clone().expect_array().elems;
+                                            
+                                            let seeds_token = ProgramInstruction::get_seeds(seeds);
+                                            cur_ix_acc.bump = Some(quote!{
+                                                bump
+                                            });
+                                            if seeds_token.len() != 0 {
+                                                cur_ix_acc.seeds = Some(seeds_token.clone());
+                                                // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
+                                            }
+                                        }
+                                        if prop == "deriveWithBump" {
+                                            let bump_members = c.clone().args[1].expr.clone().expect_member();
+                                            let bump_prop  = Ident::new(
+                                                &bump_members.prop.expect_ident().sym.to_string(),
+                                                Span::call_site(),
+                                            );
+                                            let bump_obj = Ident::new(
+                                                &bump_members.obj.expect_ident().sym.to_string(),
+                                                Span::call_site(),
+                                            );
+                                            cur_ix_acc.bump = Some(quote!{
+                                                bump = #bump_obj.#bump_prop
+                                            })
+                                        }
+                                        // println!("{:#?} : \n {:#?}", obj, seeds_token);
+                                        if chaincall1prop == "init" {
+                                            ix.uses_system_program = true;
+                                            cur_ix_acc.is_init = true;
+                                            if let Some(payer) = ix.signer.clone() {
+                                                cur_ix_acc.payer = Some(payer);
+                                            }
+                                        }
+                                        else if chaincall1prop == "initIfNeeded" {
+                                            ix.uses_system_program = true;
+                                            cur_ix_acc.is_initifneeded = true;
+                                            if let Some(payer) = ix.signer.clone() {
+                                                cur_ix_acc.payer = Some(payer);
+                                            }
+                                        }
+                                        if chaincall1prop == "close" {
+                                            cur_ix_acc.close = Some(c.clone().args[0].expr.clone().expect_ident().sym.to_string().to_case(Case::Snake));
+                                        }
+                                        if chaincall2prop == "has" {
+                                            let elems = c.clone().callee.expect_expr().expect_member().obj.expect_call().args[0].expr.clone().expect_array().elems;
+                                            let mut has_one:Vec<String> = vec![];
+                                            for elem in elems {
+                                                if let Some(e) = elem {
+                                                    has_one.push(e.expr.expect_ident().sym.to_string());
+                                                }
+                                            }
+                                            cur_ix_acc.has_one = has_one;
+                                        }
+                                        
+                                    }
+                                }
+                                if obj == "SystemProgram" && prop == "transfer" {
+                                    let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                    let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                    let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
+                                    let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
+        
+                                    ix_body.push(quote!{
+                                        let transfer_accounts = Transfer {
+                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                            to: ctx.accounts.#to_acc_ident.to_account_info()
+                                        };
+                                        let transfer_ctx = CpiContext::new(
+                                            ctx.accounts.system_program.to_account_info(),
+                                            transfer_accounts
+                                        );
+                                        transfer(transfer_ctx, amount);
+                                    });
+                                }
+                                if obj == "TokenProgram" && prop == "transfer" {
+                                    let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                    let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                    let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                    let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    let amount : TokenStream;
+                                    // let mut amount_prop : Option<String> = None;
+                                    match *(c.clone().args[3].expr.clone()) {
+                                        Expr::Member(m) => {
+                                            let amount_obj = m.obj.expect_ident().sym.to_string();
+                                            let amount_prop = m.prop.expect_ident().sym.to_string();
+                                            let amount_obj_ident = Ident::new(&amount_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let amount_prop_ident = Ident::new(&amount_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            amount = quote!{
+                                                #amount_obj_ident.#amount_prop_ident
+                                            }
+                                        }
+                                        Expr::Ident(i) => {
+                                            let amount_str = i.sym.to_string();
+                                            let amount_ident = Ident::new(&amount_str.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            amount = quote!{
+                                                #amount_ident
+                                            }
+                                        }
+                                        _ => {
+                                            panic!("amount not  provided in proper format")
+                                        }
+                                    }
+                                    if let Some(cur_ix_acc) = ix_accounts.get(&from_acc){
+                                        
+                                        if cur_ix_acc.type_str == "TokenAccount" {
+                                            // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
+                                            // if let Some(auth_acc) = ix_accounts.get(&auth) {
+                                            //     let seeds = &auth_acc.seeds;
+                                            // }
+                                            ix_body.push(quote!{
+                                                let cpi_accounts = Transfer {
+                                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                };
+                                                
+                                                let signer_seeds = &[
+                                                    &b"auth"[..],
+                                                    &[ctx.accounts.escrow.auth_bump],
+                                                ];
+                                                let binding = [&signer_seeds[..]];
+                                                let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+                                                transfer(ctx, #amount);
+                                            });
+                                        } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
+                                            ix_body.push(quote!{
+                                                let cpi_accounts = Transfer {
+                                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                };
+                                                let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                transfer(ctx, #amount);
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                            Expr::Assign(a) => {
+                                // let op = a.op;
+                                let left_members = a.clone().left.expect_expr().expect_member();
+                                let left_obj = left_members.obj.expect_ident().sym.to_string();
+                                let left_prop = left_members.prop.expect_ident().sym.to_string();
+                                if ix_accounts.contains_key(&left_obj){
+                                    let left_obj_ident = Ident::new(&left_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    let left_prop_ident = Ident::new(&left_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                    let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
+                                    cur_acc.is_mut = true;
+        
+                                    match *(a.clone().right) {
+                                        Expr::New(exp) => {
+                                            let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
+                                            let lit_type = exp.callee.expect_ident().sym.to_string();
+                                            match right_lit {
+                                                Lit::Num(num) => {
+                                                    // match lit_type {
+                                                    //     TsType::I64 => {
+        
+                                                    //     }
+                                                    // }
+                                                    let value = Literal::i64_unsuffixed(num.value as i64);
+                                                    ix_body.push(quote!{
+                                                        ctx.#left_obj_ident.#left_prop_ident =  #value;
                                                     });
-                                                }
-                                                Expr::Ident(ident_str) => {
-                                                    let seed_ident = Ident::new(
-                                                        &ident_str.sym.to_string(),
-                                                        proc_macro2::Span::call_site(),
-                                                    );
-                                                    seeds_token.push(quote! {
-                                                        #seed_ident
-                                                    });
-                                                }
-                                                Expr::Member(m) => {
-                                                    let seed_prop = Ident::new(
-                                                        &m.prop.expect_ident().sym.to_string(),
-                                                        Span::call_site(),
-                                                    );
-                                                    let seed_obj = Ident::new(
-                                                        &m.obj.expect_ident().sym.to_string(),
-                                                        Span::call_site(),
-                                                    );
-                                                    seeds_token.push( quote!{
-                                                        #seed_obj.#seed_prop().as_ref()
-                                                    })
-                                                }
-                                                Expr::Call(c) => {
-                                                    let seed_members = c.callee.expect_expr().expect_member();
-                                                    if seed_members.obj.is_ident(){
-                                                        let seed_obj_ident = Ident::new(
-                                                            &seed_members.obj.expect_ident().sym.to_string(),
-                                                            Span::call_site(),
-                                                        );
-                                                        if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
-                                                            seeds_token.push( quote!{
-                                                                #seed_obj_ident.to_le_bytes().as_ref()
-                                                            })
-                                                        }
-                                                    } else if seed_members.obj.is_member() {
-                                                        if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
-                                                            let seed_obj_ident = Ident::new(
-                                                                &seed_members.obj.clone().expect_member().obj.expect_ident().sym.to_string(),
-                                                                Span::call_site(),
-                                                            );
-                                                            let seed_prop_ident = Ident::new(
-                                                                &seed_members.obj.expect_member().prop.expect_ident().sym.to_string(),
-                                                                Span::call_site(),
-                                                            );
-                                                            seeds_token.push( quote!{
-                                                                #seed_obj_ident.#seed_prop_ident.to_le_bytes().as_ref()
-                                                            })
-                                                        }
-                                                    }
                                                 }
                                                 _ => {}
                                             }
-                                        };
-                                    }
-                                    cur_ix_acc.bump = Some(quote!{
-                                        bump
-                                    });
-                                    if seeds_token.len() != 0 {
-                                        cur_ix_acc.seeds = Some(seeds_token.clone());
-                                        // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
-                                    }
-                                }
-                                if prop == "deriveWithBump" {
-                                    let bump_members = c.clone().args[1].expr.clone().expect_member();
-                                    let bump_prop  = Ident::new(
-                                        &bump_members.prop.expect_ident().sym.to_string(),
-                                        Span::call_site(),
-                                    );
-                                    let bump_obj = Ident::new(
-                                        &bump_members.obj.expect_ident().sym.to_string(),
-                                        Span::call_site(),
-                                    );
-                                    cur_ix_acc.bump = Some(quote!{
-                                        bump = #bump_obj.#bump_prop
-                                    })
-                                }
-                                // println!("{:#?} : \n {:#?}", obj, seeds_token);
-                                if chaincall1prop == "init" {
-                                    ix.uses_system_program = true;
-                                    cur_ix_acc.is_init = true;
-                                    if let Some(payer) = ix.signer.clone() {
-                                        cur_ix_acc.payer = Some(payer);
-                                    }
-                                }
-                                else if chaincall1prop == "initIfNeeded" {
-                                    ix.uses_system_program = true;
-                                    cur_ix_acc.is_initifneeded = true;
-                                    if let Some(payer) = ix.signer.clone() {
-                                        cur_ix_acc.payer = Some(payer);
-                                    }
-                                }
-                                if chaincall1prop == "close" {
-                                    cur_ix_acc.close = Some(c.clone().args[0].expr.clone().expect_ident().sym.to_string().to_case(Case::Snake));
-                                }
-                                if chaincall2prop == "has" {
-                                    let elems = c.clone().callee.expect_expr().expect_member().obj.expect_call().args[0].expr.clone().expect_array().elems;
-                                    let mut has_one:Vec<String> = vec![];
-                                    for elem in elems {
-                                        if let Some(e) = elem {
-                                            has_one.push(e.expr.expect_ident().sym.to_string());
-                                        }
-                                    }
-                                    cur_ix_acc.has_one = has_one;
-                                }
-                                
-                            }
-                        }
-                        if obj == "SystemProgram" && prop == "transfer" {
-                            let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
-                            let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
-                            let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
-                            let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
-
-                            ix_body.push(quote!{
-                                let transfer_accounts = Transfer {
-                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                    to: ctx.accounts.#to_acc_ident.to_account_info()
-                                };
-                                let transfer_ctx = CpiContext::new(
-                                    ctx.accounts.system_program.to_account_info(),
-                                    transfer_accounts
-                                );
-                                transfer(transfer_ctx, amount);
-                            });
-                        }
-                        if obj == "TokenProgram" && prop == "transfer" {
-                            let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
-                            let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
-                            let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
-                            let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                            let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                            let amount : TokenStream;
-                            // let mut amount_prop : Option<String> = None;
-                            match *(c.clone().args[3].expr.clone()) {
-                                Expr::Member(m) => {
-                                    let amount_obj = m.obj.expect_ident().sym.to_string();
-                                    let amount_prop = m.prop.expect_ident().sym.to_string();
-                                    let amount_obj_ident = Ident::new(&amount_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    let amount_prop_ident = Ident::new(&amount_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    amount = quote!{
-                                        #amount_obj_ident.#amount_prop_ident
-                                    }
-                                }
-                                Expr::Ident(i) => {
-                                    let amount_str = i.sym.to_string();
-                                    let amount_ident = Ident::new(&amount_str.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    amount = quote!{
-                                        #amount_ident
-                                    }
-                                }
-                                _ => {
-                                    panic!("amount not  provided in proper format")
-                                }
-                            }
-                            if let Some(cur_ix_acc) = ix_accounts.get(&from_acc){
-                                if cur_ix_acc.type_str == "TokenAccount" {
-                                    ix_body.push(quote!{
-                                        let cpi_accounts = Transfer {
-                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                            to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                            authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                        };
-                                        let signer_seeds = &[
-                                            &b"auth"[..],
-                                            &[ctx.accounts.escrow.auth_bump],
-                                        ];
-                                        let binding = [&signer_seeds[..]];
-                                        let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                        transfer(ctx, #amount);
-                                    });
-                                } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
-                                    ix_body.push(quote!{
-                                        let cpi_accounts = Transfer {
-                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                            to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                            authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                        };
-                                        let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                        transfer(ctx, #amount);
-                                    })
-                                }
-                            }
-                        }
-                    }
-                    Expr::Assign(a) => {
-                        // let op = a.op;
-                        let left_members = a.clone().left.expect_expr().expect_member();
-                        let left_obj = left_members.obj.expect_ident().sym.to_string();
-                        let left_prop = left_members.prop.expect_ident().sym.to_string();
-                        if ix_accounts.contains_key(&left_obj){
-                            let left_obj_ident = Ident::new(&left_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
-                            let left_prop_ident = Ident::new(&left_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                            let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
-                            cur_acc.is_mut = true;
-
-                            match *(a.clone().right) {
-                                Expr::New(exp) => {
-                                    let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
-                                    let lit_type = exp.callee.expect_ident().sym.to_string();
-                                    match right_lit {
-                                        Lit::Num(num) => {
-                                            // match lit_type {
-                                            //     TsType::I64 => {
-
-                                            //     }
-                                            // }
-                                            let value = Literal::i64_unsuffixed(num.value as i64);
-                                            ix_body.push(quote!{
-                                                ctx.#left_obj_ident.#left_prop_ident =  #value;
-                                            });
-                                        }
-                                        _ => {}
-                                    }
-                                },
-
-                                Expr::Call(CallExpr { span, callee, args, type_args }) => {
-                                    let memebers = callee.expect_expr().expect_member();
-                                    let prop: &str = &memebers.prop.clone().expect_ident().sym.to_string();
-                                    match *(memebers.obj) {
-                                        Expr::Member(sub_members) => {
-                                            let sub_prop = sub_members.prop.expect_ident().sym.to_string();
-                                            let sub_obj = sub_members.obj.expect_ident().sym.to_string();
-                                            let right_sub_obj_ident = Ident::new(&sub_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            let right_sub_prop_ident = Ident::new(&sub_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            match *(args[0].expr.clone()) {
-                                                Expr::Lit(Lit::Num(num)) => {
-                                                    let value = Literal::i64_unsuffixed(num.value as i64);
-                                                    match prop {
-                                                        "add" => {
-                                                            ix_body.push(quote!{
-                                                                ctx.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident + #value;
-                                                            });
-                                                        },
-                                                        "sub" => {
-                                                            ix_body.push(quote!{
-                                                                ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident - #value;
-                                                            });
+                                        },
+        
+                                        Expr::Call(CallExpr { span, callee, args, type_args }) => {
+                                            let memebers = callee.expect_expr().expect_member();
+                                            let prop: &str = &memebers.prop.clone().expect_ident().sym.to_string();
+                                            match *(memebers.obj) {
+                                                Expr::Member(sub_members) => {
+                                                    let sub_prop = sub_members.prop.expect_ident().sym.to_string();
+                                                    let sub_obj = sub_members.obj.expect_ident().sym.to_string();
+                                                    let right_sub_obj_ident = Ident::new(&sub_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                                    let right_sub_prop_ident = Ident::new(&sub_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                                    match *(args[0].expr.clone()) {
+                                                        Expr::Lit(Lit::Num(num)) => {
+                                                            let value = Literal::i64_unsuffixed(num.value as i64);
+                                                            match prop {
+                                                                "add" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident + #value;
+                                                                    });
+                                                                },
+                                                                "sub" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident - #value;
+                                                                    });
+                                                                }
+                                                                _ => {}
+                                                            }
                                                         }
                                                         _ => {}
                                                     }
                                                 }
+                                                Expr::Ident(right_obj) => {
+                                                    let right_obj = right_obj.sym.to_string();
+                                                    let right_prop = memebers.prop.expect_ident().sym.to_string();
+                                                    // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
+                                                    // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
+
+                                                    if right_prop == "getBump" {
+                                                        let right_obj_literal = Literal::string(&right_obj);
+                                                        ix_body.push(quote!{
+                                                            ctx.#left_obj_ident.#left_prop_ident = *ctx.bumps.get(#right_obj_literal).unwrap();
+                                                        })
+                                                    }
+                                                }
                                                 _ => {}
                                             }
                                         }
-                                        Expr::Ident(right_obj) => {
-                                            let right_obj = right_obj.sym.to_string();
-                                            let right_prop = memebers.prop.expect_ident().sym.to_string();
-                                            // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
-                                            // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
-
-                                            if right_prop == "getBump" {
-                                                let right_obj_literal = Literal::string(&right_obj);
-                                                ix_body.push(quote!{
-                                                    ctx.#left_obj_ident.#left_prop_ident = *ctx.bumps.get(#right_obj_literal).unwrap();
-                                                })
-                                            }
+                                        Expr::Member(m) => {
+                                            let right_obj = m.obj.expect_ident().sym.to_string();
+                                            let right_prop = m.prop.expect_ident().sym.to_string();
+                                            let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let right_prop_ident = Ident::new(&right_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            ix_body.push(quote!{
+                                                ctx.accounts.#left_obj_ident.#left_prop_ident =  ctx.accounts.#right_obj_ident.#right_prop_ident;
+                                            });
                                         }
                                         _ => {}
                                     }
                                 }
-                                Expr::Member(m) => {
-                                    let right_obj = m.obj.expect_ident().sym.to_string();
-                                    let right_prop = m.prop.expect_ident().sym.to_string();
-                                    let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    let right_prop_ident = Ident::new(&right_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    ix_body.push(quote!{
-                                        ctx.accounts.#left_obj_ident.#left_prop_ident =  ctx.accounts.#right_obj_ident.#right_prop_ident;
-                                    });
-                                }
-                                _ => {}
                             }
+                            _ => {}
                         }
+                    },
+                    Stmt::Decl(d) => {
+                        // let kind  = d.clone().expect_var().kind;
+                        // let decls = &d.clone().expect_var().decls[0];
+                        // let name = decls.name.clone().expect_ident().id.sym.to_string().to_case(Case::Snake);
+                        // let of_type = decls.name.clone().expect_ident().type_ann.expect("declaration stmt type issue").type_ann.expect_ts_type_ref().type_name.expect_ident().sym.to_string();
+                        // if of_type == "Seeds" {
+                        //     let elems = decls.init.clone().expect("declaration stmt init issue").expect_array().elems;
+                        //     for elem in elems {
+                        //         if let Some(seed) = elem {
+
+                        //         }
+                        //     }
+                        // }
                     }
                     _ => {}
                 }
+        
             });
 
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();

@@ -59,7 +59,7 @@ export default class EscrowProgram {
 
         vault.derive(["vault", escrow.key], makerMint, auth.key)
 
-        // let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
+        let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
 
         TokenProgram.transfer(
             vault,
@@ -107,7 +107,7 @@ export default class EscrowProgram {
             escrow.amount,
         )
 
-        // let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
+        let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
 
         TokenProgram.transfer(
             vault,
