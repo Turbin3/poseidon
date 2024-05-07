@@ -165,8 +165,16 @@ impl InstructionAccount {
                 )]
             }
         }
+        let check = if self.type_str == "UncheckedAccount" {
+            quote!{ 
+                /// CHECK: ignore 
+            }
+        } else {
+            quote!{}
+        };
         quote!(
             #constraints
+            #check
             pub #name: #of_type,
         )
     }
