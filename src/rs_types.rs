@@ -1,5 +1,6 @@
 use convert_case::{Case, Casing};
 use core::panic;
+use anchor_lang::prelude::*;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{format_ident, quote};
 use std::{
@@ -580,7 +581,7 @@ impl ProgramInstruction {
                                             ctx.accounts.system_program.to_account_info(),
                                             transfer_accounts
                                         );
-                                        transfer(transfer_ctx, amount);
+                                        transfer(transfer_ctx, amount)?;
                                     });
                                 }
                                 if obj == "TokenProgram" && prop == "transfer" {
@@ -633,7 +634,7 @@ impl ProgramInstruction {
                                                 ];
                                                 let binding = [&signer_seeds[..]];
                                                 let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                                transfer(ctx, #amount);
+                                                transfer(ctx, #amount)?;
                                             });
                                         } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
                                             ix_body.push(quote!{
@@ -643,7 +644,7 @@ impl ProgramInstruction {
                                                     authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                 };
                                                 let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                transfer(ctx, #amount);
+                                                transfer(ctx, #amount)?;
                                             })
                                         }
                                     }

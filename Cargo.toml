@@ -13,3 +13,4 @@ thiserror = "1.0.50"
 quote = "1.0.33"
 proc-macro2 = "1.0.69"
 rust-format = { version = "0.3.4", features = ["pretty_please"] }
+anchor-lang = { version = "0.30.0", features = ["init-if-needed"]}
