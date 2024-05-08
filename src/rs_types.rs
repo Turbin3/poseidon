@@ -122,10 +122,17 @@ impl InstructionAccount {
             }
             None => quote! {},
         };
+        let space = match self.space {
+            Some(s) => {
+                let s_literal = Literal::u16_unsuffixed(s);
+                quote!{space = #s_literal,}
+            }
+            None => {quote!{}}
+        };
 
         // need to also declare payer in case of init
         let init = match self.is_init {
-            true => quote! {init, #payer,},
+            true => quote! {init, #payer, #space},
             false => {
                 if self.is_mut {
                     quote! {mut,}
@@ -149,6 +156,7 @@ impl InstructionAccount {
             true => quote! {init_if_needed, #payer,},
             false => quote!{}
         };
+        
         if self.is_mint {
             constraints = quote! {}
         } else {
@@ -395,11 +403,13 @@ impl ProgramInstruction {
                     InstructionAccount::new(
                         snaked_name.clone(),
                         quote! { Account<'info, #ty> },
-                        of_type,
+                        of_type.clone(),
                         optional,
                     ),
                 );
                 ix.uses_system_program = true;
+                let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                (*cur_ix_acc).space = Some(custom_accounts.get(&of_type).expect("space for custom acc not found").space);
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
@@ -828,6 +838,7 @@ pub struct ProgramAccountField {
 pub struct ProgramAccount {
     pub name: String,
     pub fields: Vec<ProgramAccountField>,
+    pub space: u16,
 }
 
 impl ProgramAccount {
@@ -841,6 +852,7 @@ impl ProgramAccount {
             _ => panic!("Custom accounts must extend Account type"),
         }
         let name: String = interface.id.sym.to_string();
+        let mut space: u16 = 0;
         // println!("{}", &name);
         // TODO: Process fields of account
         let fields: Vec<ProgramAccountField> = interface
@@ -850,7 +862,7 @@ impl ProgramAccount {
             .map(|f| {
                 let field = f.clone().ts_property_signature().expect("Invalid property");
                 let field_name = field.key.ident().expect("Invalid property").sym.to_string();
-                let field_type = field
+                let field_type: &str = &field
                     .type_ann
                     .expect("Invalid type annotation")
                     .type_ann
@@ -859,14 +871,34 @@ impl ProgramAccount {
                     .type_name
                     .as_ident()
                     .expect("Invalid ident")
+                    .sym
                     .to_string();
+
+                match field_type {
+                    "Pubkey" => {
+                        space+=32;
+                    }
+                    "u64" | "i64" => {
+                        space+=8;
+                    }
+                    "u32" | "i32" => {
+                        space+=4;
+                    }
+                    "u16" | "i16" => {
+                        space+=2;
+                    }
+                    "u8" | "i8" => {
+                        space+=1;
+                    }
+                    _ => {}
+                }
                 ProgramAccountField {
                     name: field_name,
-                    of_type: field_type,
+                    of_type: field_type.to_string(),
                 }
             })
             .collect();
-        Self { name, fields }
+        Self { name, fields, space }
     }
 
     pub fn to_tokens(&self) -> TokenStream {
