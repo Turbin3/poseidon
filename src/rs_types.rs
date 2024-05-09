@@ -744,7 +744,7 @@ impl ProgramInstruction {
                                         ix_body.push(quote!{
                                             let cpi_ctx = CpiContext::new(
                                                 ctx.accounts.token_program.to_account_info(),
-                                                Approve {
+                                                ApproveChecked {
                                                     to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                     mint: ctx.accounts.#mint_acc_ident.to_account_info(),
                                                     delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
@@ -899,7 +899,7 @@ impl ProgramInstruction {
                                                     ];
                                                     let binding = [&signer_seeds[..]];
                                                     let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                                    transfer(ctx, #amount)?;
+                                                    transfer_checked(ctx, #amount)?;
                                                 });
                                             } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
                                                 ix_body.push(quote!{
@@ -910,7 +910,7 @@ impl ProgramInstruction {
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                     };
                                                     let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                    transfer(ctx, #amount)?;
+                                                    transfer_checked(ctx, #amount)?;
                                                 })
                                             }
                                         }
