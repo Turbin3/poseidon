@@ -594,6 +594,7 @@ impl ProgramInstruction {
                                         
                                     }
                                 }
+                                // need to implement signer seeds
                                 if obj == "SystemProgram" {
                                     if prop == "transfer" {
                                         let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
@@ -668,7 +669,7 @@ impl ProgramInstruction {
                                         let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let amount_expr = *(c.clone().args[3].expr.clone());
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);  
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);
 
                                         ix_body.push(quote!{
                                             let cpi_ctx = CpiContext::new(
@@ -679,10 +680,243 @@ impl ProgramInstruction {
                                                     authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                 },
                                             );
-                                            
+
                                             burn(cpi_ctx, #amount)?;
                                         })
-                                    }
+                                    } else if prop == "mintTo" {
+                                        let mint_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let amount_expr = *(c.clone().args[3].expr.clone());
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);  
+                                        
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new_with_signer(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                MintTo {
+                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                                signer,
+                                            );
+                                            mint_to(cpi_ctx, #amount)?;
+                                        })
+                                    } else if prop == "approve" {
+                                        let to_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let delegate_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let amount_expr = *(c.clone().args[3].expr.clone());
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);
+
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                Approve {
+                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                    delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            approve(cpi_ctx, #amount)?;
+                                        })
+                                    // not sure why decimals is in poseidon ts 
+                                    } else if prop == "approveChecked" {
+                                        let to_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let mint_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let delegate_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[3].expr.clone().expect_ident().sym.to_string();
+                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), 
+                                        proc_macro2::Span::call_site());
+                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), 
+                                        proc_macro2::Span::call_site());
+                                        let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let amount_expr = *(c.clone().args[4].expr.clone());
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                Approve {
+                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                    delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            approve_checked(cpi_ctx, #amount)?;
+                                        })
+                                        
+                                    } else if prop == "closeAccount" {
+                                        let acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let destination_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let destination_acc_ident = Ident::new(&destination_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                CloseAccount {
+                                                    account: ctx.accounts.#acc_ident.to_account_info(),
+                                                    destination: ctx.accounts.#destination_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            close_account(cpi_ctx)?;
+                                        })
+                                        
+                                    } else if prop == "freezeAccount" {
+                                        let acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let mint_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                FreezeAccount {
+                                                    account: ctx.accounts.#acc_ident.to_account_info(),
+                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            freeze_account(cpi_ctx)?;
+                                        })
+                                        
+                                    } else if prop == "initializeAccount" {
+                                        let acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let mint_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                InitializeAccount3 {
+                                                    account: ctx.accounts.#acc_ident.to_account_info(),
+                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            initialize_account3(cpi_ctx)?;
+                                        })
+                                        
+                                    } else if prop == "revoke" {
+                                        let source_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let source_acc_ident = Ident::new(&source_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                Revoke {
+                                                    source: ctx.accounts.#source_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            revoke(cpi_ctx)?;
+                                        })
+                                        
+                                    } else if prop == "syncNative" {
+                                        let acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                SyncNative {
+                                                    account: ctx.accounts.#acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            sync_native(cpi_ctx)?;
+                                        })
+                                        
+                                    } else if prop == "thawAccount" {
+                                        let acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let mint_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                ThawAccount {
+                                                    account: ctx.accounts.#acc_ident.to_account_info(),
+                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+
+                                            thaw_account(cpi_ctx)?;
+                                        })
+                                    } else if prop == "transferChecked" {
+                                        let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let mint_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let to_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[3].expr.clone().expect_ident().sym.to_string();
+                                        let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let amount_expr = *(c.clone().args[4].expr.clone());
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);
+                                        if let Some(cur_ix_acc) = ix_accounts.get(&from_acc){
+                                                
+                                            if cur_ix_acc.type_str == "TokenAccount" {
+                                                // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
+                                                // if let Some(auth_acc) = ix_accounts.get(&auth) {
+                                                //     let seeds = &auth_acc.seeds;
+                                                // }
+                                                ix_body.push(quote!{
+                                                    let cpi_accounts = TransferChecked {
+                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    };
+                                                    
+                                                    let signer_seeds = &[
+                                                        &b"auth"[..],
+                                                        &[ctx.accounts.escrow.auth_bump],
+                                                    ];
+                                                    let binding = [&signer_seeds[..]];
+                                                    let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+                                                    transfer(ctx, #amount)?;
+                                                });
+                                            } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
+                                                ix_body.push(quote!{
+                                                    let cpi_accounts = TransferChecked {
+                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    };
+                                                    let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                    transfer(ctx, #amount)?;
+                                                })
+                                            }
+                                        }
+                                    } else if prop == "initializeMint" {
+                                        
+                                    } 
                                 }
                             }
                             Expr::Assign(a) => {
