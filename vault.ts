@@ -32,8 +32,8 @@ export default class VaultProgram {
         vault.deriveWithBump(['vault', auth.key], state.vaultBump)
 
         SystemProgram.transfer(
-            owner.toAccountInfo(),
-            vault.toAccountInfo(),
+            owner,
+            vault,
             amount
         )
     }
@@ -50,8 +50,8 @@ export default class VaultProgram {
         vault.deriveWithBump(['vault', auth.key], state.vaultBump)
 
         SystemProgram.transfer(
-            vault.toAccountInfo(),
-            owner.toAccountInfo(),
+            vault,
+            owner,
             amount,
             ['auth', state.key, state.authBump]
         )

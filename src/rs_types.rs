@@ -205,6 +205,7 @@ pub struct ProgramInstruction {
     pub uses_system_program: bool,
     pub uses_token_program: bool,
     pub uses_associated_token_program: bool,
+    pub instruction_attribute: Option<Vec<TokenStream>>
 }
 
 impl ProgramInstruction {
@@ -218,7 +219,34 @@ impl ProgramInstruction {
             uses_system_program: false,
             uses_token_program: false,
             uses_associated_token_program: false,
+            instruction_attribute:None,
         }
+    }
+    pub fn get_amount_from_ts_arg(amount_expr : Expr) -> TokenStream{
+        let amount : TokenStream;
+        // let mut amount_prop : Option<String> = None;
+        match amount_expr {
+            Expr::Member(m) => {
+                let amount_obj = m.obj.expect_ident().sym.to_string();
+                let amount_prop = m.prop.expect_ident().sym.to_string();
+                let amount_obj_ident = Ident::new(&amount_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
+                let amount_prop_ident = Ident::new(&amount_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
+                amount = quote!{
+                    #amount_obj_ident.#amount_prop_ident
+                };
+            }
+            Expr::Ident(i) => {
+                let amount_str = i.sym.to_string();
+                let amount_ident = Ident::new(&amount_str.to_case(Case::Snake), proc_macro2::Span::call_site());
+                amount = quote!{
+                    #amount_ident
+                };
+            }
+            _ => {
+                panic!("amount not  provided in proper format")
+            }
+        }
+        amount
     }
     pub fn get_seeds(seeds : Vec<Option<ExprOrSpread>>) -> Vec<TokenStream> {
         let mut seeds_token: Vec<TokenStream> = vec![];
@@ -566,88 +594,74 @@ impl ProgramInstruction {
                                         
                                     }
                                 }
-                                if obj == "SystemProgram" && prop == "transfer" {
-                                    let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
-                                    let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
-                                    let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
-                                    let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
-        
-                                    ix_body.push(quote!{
-                                        let transfer_accounts = Transfer {
-                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                            to: ctx.accounts.#to_acc_ident.to_account_info()
-                                        };
-                                        let transfer_ctx = CpiContext::new(
-                                            ctx.accounts.system_program.to_account_info(),
-                                            transfer_accounts
-                                        );
-                                        transfer(transfer_ctx, amount)?;
-                                    });
+                                if obj == "SystemProgram" {
+                                    if prop == "transfer" {
+                                        let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
+                                        let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
+                                        let amount_expr = *(c.clone().args[2].expr.clone());
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);
+                                        ix_body.push(quote!{
+                                            let transfer_accounts = Transfer {
+                                                from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                to: ctx.accounts.#to_acc_ident.to_account_info()
+                                            };
+                                            let transfer_ctx = CpiContext::new(
+                                                ctx.accounts.system_program.to_account_info(),
+                                                transfer_accounts
+                                            );
+                                            transfer(transfer_ctx, #amount)?;
+                                        });
+                                    }
+                                    
                                 }
-                                if obj == "TokenProgram" && prop == "transfer" {
-                                    let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
-                                    let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
-                                    let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
-                                    let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    let amount : TokenStream;
-                                    // let mut amount_prop : Option<String> = None;
-                                    match *(c.clone().args[3].expr.clone()) {
-                                        Expr::Member(m) => {
-                                            let amount_obj = m.obj.expect_ident().sym.to_string();
-                                            let amount_prop = m.prop.expect_ident().sym.to_string();
-                                            let amount_obj_ident = Ident::new(&amount_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            let amount_prop_ident = Ident::new(&amount_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            amount = quote!{
-                                                #amount_obj_ident.#amount_prop_ident
+                                if obj == "TokenProgram" {
+                                    if prop == "transfer" {
+                                        let from_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let to_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let amount_expr = *(c.clone().args[3].expr.clone());
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);  
+                                        if let Some(cur_ix_acc) = ix_accounts.get(&from_acc){
+                                            
+                                            if cur_ix_acc.type_str == "TokenAccount" {
+                                                // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
+                                                // if let Some(auth_acc) = ix_accounts.get(&auth) {
+                                                //     let seeds = &auth_acc.seeds;
+                                                // }
+                                                ix_body.push(quote!{
+                                                    let cpi_accounts = Transfer {
+                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    };
+                                                    
+                                                    let signer_seeds = &[
+                                                        &b"auth"[..],
+                                                        &[ctx.accounts.escrow.auth_bump],
+                                                    ];
+                                                    let binding = [&signer_seeds[..]];
+                                                    let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+                                                    transfer(ctx, #amount)?;
+                                                });
+                                            } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
+                                                ix_body.push(quote!{
+                                                    let cpi_accounts = Transfer {
+                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    };
+                                                    let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                    transfer(ctx, #amount)?;
+                                                })
                                             }
                                         }
-                                        Expr::Ident(i) => {
-                                            let amount_str = i.sym.to_string();
-                                            let amount_ident = Ident::new(&amount_str.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            amount = quote!{
-                                                #amount_ident
-                                            }
-                                        }
-                                        _ => {
-                                            panic!("amount not  provided in proper format")
-                                        }
                                     }
-                                    if let Some(cur_ix_acc) = ix_accounts.get(&from_acc){
-                                        
-                                        if cur_ix_acc.type_str == "TokenAccount" {
-                                            // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
-                                            // if let Some(auth_acc) = ix_accounts.get(&auth) {
-                                            //     let seeds = &auth_acc.seeds;
-                                            // }
-                                            ix_body.push(quote!{
-                                                let cpi_accounts = Transfer {
-                                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                };
-                                                
-                                                let signer_seeds = &[
-                                                    &b"auth"[..],
-                                                    &[ctx.accounts.escrow.auth_bump],
-                                                ];
-                                                let binding = [&signer_seeds[..]];
-                                                let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                                transfer(ctx, #amount)?;
-                                            });
-                                        } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
-                                            ix_body.push(quote!{
-                                                let cpi_accounts = Transfer {
-                                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                };
-                                                let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                transfer(ctx, #amount)?;
-                                            })
-                                        }
-                                    }
+                                    
                                 }
                             }
                             Expr::Assign(a) => {
