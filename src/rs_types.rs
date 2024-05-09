@@ -660,8 +660,29 @@ impl ProgramInstruction {
                                                 })
                                             }
                                         }
+                                    } else if prop == "burn" {
+                                        let mint_acc = c.clone().args[0].expr.clone().expect_ident().sym.to_string();
+                                        let from_acc = c.clone().args[1].expr.clone().expect_ident().sym.to_string();
+                                        let auth_acc = c.clone().args[2].expr.clone().expect_ident().sym.to_string();
+                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let amount_expr = *(c.clone().args[3].expr.clone());
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);  
+
+                                        ix_body.push(quote!{
+                                            let cpi_ctx = CpiContext::new(
+                                                ctx.accounts.token_program.to_account_info(),
+                                                Burn {
+                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                },
+                                            );
+                                            
+                                            burn(cpi_ctx, #amount)?;
+                                        })
                                     }
-                                    
                                 }
                             }
                             Expr::Assign(a) => {
