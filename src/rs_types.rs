@@ -972,7 +972,52 @@ impl ProgramInstruction {
                                                                     ix_body.push(quote!{
                                                                         ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident - #value;
                                                                     });
-                                                                }
+                                                                },
+                                                                "mul" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident * #value;
+                                                                    });
+                                                                },
+                                                                "div" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident / #value;
+                                                                    });
+                                                                },
+                                                                "eq" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident == #value;
+                                                                    });
+                                                                },
+                                                                "neq" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident != #value;
+                                                                    });
+                                                                },
+                                                                "lt" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident < #value;
+                                                                    });
+                                                                },
+                                                                "lte" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident <= #value;
+                                                                    });
+                                                                },
+                                                                "gt" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident > #value;
+                                                                    });
+                                                                },
+                                                                "gte" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident >= #value;
+                                                                    });
+                                                                },
+                                                                "toBytes" => {
+                                                                    ix_body.push(quote!{
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident.to_bytes();
+                                                                    });
+                                                                },
                                                                 _ => {}
                                                             }
                                                         }

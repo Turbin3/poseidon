@@ -71,6 +71,8 @@ pub mod EscrowProgram {
 }
 #[derive(Accounts)]
 pub struct MakeContext<'info> {
+    pub maker_mint: Account<'info, Mint>,
+    pub taker_mint: Account<'info, Mint>,
     #[account(
         init,
         payer = maker,
@@ -81,8 +83,6 @@ pub struct MakeContext<'info> {
         bump,
     )]
     pub escrow: Account<'info, EscrowState>,
-    pub maker_mint: Account<'info, Mint>,
-    pub taker_mint: Account<'info, Mint>,
     #[account(
         init,
         payer = maker,
@@ -93,25 +93,23 @@ pub struct MakeContext<'info> {
         bump,
     )]
     pub vault: Account<'info, TokenAccount>,
-    #[account(seeds = [b"auth"], bump)]
-    /// CHECK: ignore
-    pub auth: UncheckedAccount<'info>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
     #[account(
         mut,
         associated_token::mint = maker_mint,
         associated_token::authority = maker,
     )]
     pub maker_ata: Account<'info, TokenAccount>,
+    #[account(seeds = [b"auth"], bump)]
+    /// CHECK: ignore
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct RefundContext<'info> {
-    #[account(mut)]
-    pub maker: Signer<'info>,
     #[account(
         mut,
         associated_token::mint = maker_mint,
@@ -128,9 +126,6 @@ pub struct RefundContext<'info> {
         bump,
     )]
     pub vault: Account<'info, TokenAccount>,
-    #[account(seeds = [b"auth"], bump)]
-    /// CHECK: ignore
-    pub auth: UncheckedAccount<'info>,
     #[account(
         seeds = [b"escrow",
         maker.key().as_ref(),
@@ -140,21 +135,40 @@ pub struct RefundContext<'info> {
         close = maker,
     )]
     pub escrow: Account<'info, EscrowState>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    #[account(seeds = [b"auth"], bump)]
+    /// CHECK: ignore
+    pub auth: UncheckedAccount<'info>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct TakeContext<'info> {
-    pub taker_mint: Account<'info, Mint>,
-    #[account(mut)]
-    pub maker: SystemAccount<'info>,
+    #[account(
+        mut,
+        init_if_needed,
+        payer = taker,
+        associated_token::mint = maker_mint,
+        associated_token::authority = taker,
+    )]
+    pub taker_ata: Account<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = maker_mint,
         associated_token::authority = maker,
     )]
     pub maker_ata: Account<'info, TokenAccount>,
+    pub taker_mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub taker: Signer<'info>,
+    pub maker_mint: Account<'info, Mint>,
+    #[account(seeds = [b"auth"], bump)]
+    /// CHECK: ignore
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub maker: SystemAccount<'info>,
     #[account(
         mut,
         seeds = [b"vault",
@@ -164,20 +178,6 @@ pub struct TakeContext<'info> {
         bump,
     )]
     pub vault: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub taker: Signer<'info>,
-    #[account(
-        mut,
-        init_if_needed,
-        payer = taker,
-        associated_token::mint = maker_mint,
-        associated_token::authority = taker,
-    )]
-    pub taker_ata: Account<'info, TokenAccount>,
-    pub maker_mint: Account<'info, Mint>,
-    #[account(seeds = [b"auth"], bump)]
-    /// CHECK: ignore
-    pub auth: UncheckedAccount<'info>,
     #[account(
         mut,
         init_if_needed,
