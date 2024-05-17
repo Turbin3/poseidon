@@ -1,6 +1,5 @@
 use convert_case::{Case, Casing};
 use core::panic;
-use anchor_lang::prelude::*;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{format_ident, quote};
 use std::{
@@ -74,7 +73,7 @@ impl InstructionAccount {
         // print!("{:#?}", payer);
         let payer = match &self.payer {
             Some(s) => {
-                let payer = Ident::new(&s, proc_macro2::Span::call_site());
+                let payer = Ident::new(s, proc_macro2::Span::call_site());
                 quote!(
                     payer = #payer
                 )
@@ -143,7 +142,7 @@ impl InstructionAccount {
             }
         };
         let mut has : TokenStream = quote!{}; 
-        if self.has_one.len() != 0 {
+        if !self.has_one.is_empty(){
             let mut has_vec : Vec<TokenStream> = vec![];
             for h in &self.has_one {
                 let h_ident = Ident::new(h, proc_macro2::Span::call_site());
@@ -250,9 +249,8 @@ impl ProgramInstruction {
     }
     pub fn get_seeds(seeds : Vec<Option<ExprOrSpread>>) -> Vec<TokenStream> {
         let mut seeds_token: Vec<TokenStream> = vec![];
-        for elem in seeds {
-            if let Some(a) = elem {
-                match *(a.expr.clone()) {
+        for elem in seeds.into_iter().flatten() {
+                match *(elem.expr.clone()) {
                     Expr::Lit(Lit::Str(seedstr)) => {
                         let lit_vec =
                             Literal::byte_string(seedstr.value.as_bytes());
@@ -262,7 +260,7 @@ impl ProgramInstruction {
                     }
                     Expr::Ident(ident_str) => {
                         let seed_ident = Ident::new(
-                            &ident_str.sym.to_string(),
+                            ident_str.sym.as_ref(),
                             proc_macro2::Span::call_site(),
                         );
                         seeds_token.push(quote! {
@@ -271,11 +269,11 @@ impl ProgramInstruction {
                     }
                     Expr::Member(m) => {
                         let seed_prop = Ident::new(
-                            &m.prop.expect_ident().sym.to_string(),
+                            m.prop.expect_ident().sym.as_ref(),
                             Span::call_site(),
                         );
                         let seed_obj = Ident::new(
-                            &m.obj.expect_ident().sym.to_string(),
+                            m.obj.expect_ident().sym.as_ref(),
                             Span::call_site(),
                         );
                         seeds_token.push( quote!{
@@ -286,22 +284,22 @@ impl ProgramInstruction {
                         let seed_members = c.callee.expect_expr().expect_member();
                         if seed_members.obj.is_ident(){
                             let seed_obj_ident = Ident::new(
-                                &seed_members.obj.expect_ident().sym.to_string(),
+                                seed_members.obj.expect_ident().sym.as_ref(),
                                 Span::call_site(),
                             );
-                            if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
+                            if seed_members.prop.expect_ident().sym.as_ref() == "toBytes" {
                                 seeds_token.push( quote!{
                                     #seed_obj_ident.to_le_bytes().as_ref()
                                 })
                             }
                         } else if seed_members.obj.is_member() {
-                            if seed_members.prop.expect_ident().sym.to_string() == "toBytes" {
+                            if seed_members.prop.expect_ident().sym.as_ref() == "toBytes" {
                                 let seed_obj_ident = Ident::new(
-                                    &seed_members.obj.clone().expect_member().obj.expect_ident().sym.to_string(),
+                                    seed_members.obj.clone().expect_member().obj.expect_ident().sym.as_ref(),
                                     Span::call_site(),
                                 );
                                 let seed_prop_ident = Ident::new(
-                                    &seed_members.obj.expect_member().prop.expect_ident().sym.to_string(),
+                                    seed_members.obj.expect_member().prop.expect_ident().sym.as_ref(),
                                     Span::call_site(),
                                 );
                                 seeds_token.push( quote!{
@@ -312,7 +310,6 @@ impl ProgramInstruction {
                     }
                     _ => {}
                 }
-            };
         }
         seeds_token
         
@@ -348,7 +345,7 @@ impl ProgramInstruction {
                 ix_arguments.push(InstructionArgument {
                     name: snaked_name,
                     of_type: rs_type_from_str(&of_type)
-                        .expect(&format!("Invalid type: {}", of_type)),
+                        .unwrap_or_else(|_| panic!("Invalid type: {}", of_type)),
                     optional,
                 })
             } else if STANDARD_ACCOUNT_TYPES.contains(&of_type.as_str()) {
@@ -364,7 +361,7 @@ impl ProgramInstruction {
                         ),
                     );
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                    (*cur_ix_acc).is_mut = true;
+                    cur_ix_acc.is_mut = true;
                 } else if of_type == "UncheckedAccount" {
                     ix_accounts.insert(
                         name.clone(),
@@ -388,7 +385,7 @@ impl ProgramInstruction {
                     ix.uses_system_program = true;
 
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                    (*cur_ix_acc).is_mut = true;
+                    cur_ix_acc.is_mut = true;
                 } else if of_type == "AssociatedTokenAccount" {
                     ix_accounts.insert(
                         name.clone(),
@@ -412,7 +409,7 @@ impl ProgramInstruction {
                         ),
                     );
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                    (*cur_ix_acc).is_mint = true;
+                    cur_ix_acc.is_mint = true;
                 } else if of_type == "TokenAccount" {
                     ix_accounts.insert(
                         name.clone(),
@@ -438,7 +435,7 @@ impl ProgramInstruction {
                 );
                 ix.uses_system_program = true;
                 let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                (*cur_ix_acc).space = Some(custom_accounts.get(&of_type).expect("space for custom acc not found").space);
+                cur_ix_acc.space = Some(custom_accounts.get(&of_type).expect("space for custom acc not found").space);
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
@@ -544,7 +541,7 @@ impl ProgramInstruction {
                                             cur_ix_acc.bump = Some(quote!{
                                                 bump
                                             });
-                                            if seeds_token.len() != 0 {
+                                            if !seeds_token.is_empty() {
                                                 cur_ix_acc.seeds = Some(seeds_token.clone());
                                                 // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
                                             }
@@ -552,11 +549,11 @@ impl ProgramInstruction {
                                         if prop == "deriveWithBump" {
                                             let bump_members = c.clone().args[1].expr.clone().expect_member();
                                             let bump_prop  = Ident::new(
-                                                &bump_members.prop.expect_ident().sym.to_string(),
+                                                bump_members.prop.expect_ident().sym.as_ref(),
                                                 Span::call_site(),
                                             );
                                             let bump_obj = Ident::new(
-                                                &bump_members.obj.expect_ident().sym.to_string(),
+                                                bump_members.obj.expect_ident().sym.as_ref(),
                                                 Span::call_site(),
                                             );
                                             cur_ix_acc.bump = Some(quote!{
@@ -584,10 +581,8 @@ impl ProgramInstruction {
                                         if chaincall2prop == "has" {
                                             let elems = c.clone().callee.expect_expr().expect_member().obj.expect_call().args[0].expr.clone().expect_array().elems;
                                             let mut has_one:Vec<String> = vec![];
-                                            for elem in elems {
-                                                if let Some(e) = elem {
-                                                    has_one.push(e.expr.expect_ident().sym.to_string());
-                                                }
+                                            for elem in elems.into_iter().flatten() {
+                                                    has_one.push(elem.expr.expect_ident().sym.to_string());
                                             }
                                             cur_ix_acc.has_one = has_one;
                                         }
@@ -628,7 +623,6 @@ impl ProgramInstruction {
                                         let amount_expr = *(c.clone().args[3].expr.clone());
                                         let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);  
                                         if let Some(cur_ix_acc) = ix_accounts.get(&from_acc){
-                                            
                                             if cur_ix_acc.type_str == "TokenAccount" {
                                                 // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
                                                 // if let Some(auth_acc) = ix_accounts.get(&auth) {
@@ -691,7 +685,7 @@ impl ProgramInstruction {
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let amount_expr = *(c.clone().args[3].expr.clone());
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);  
+                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr);
                                         
                                         ix_body.push(quote!{
                                             let cpi_ctx = CpiContext::new_with_signer(
@@ -914,9 +908,7 @@ impl ProgramInstruction {
                                                 })
                                             }
                                         }
-                                    } else if prop == "initializeMint" {
-                                        
-                                    } 
+                                    }
                                 }
                             }
                             Expr::Assign(a) => {
@@ -933,7 +925,7 @@ impl ProgramInstruction {
                                     match *(a.clone().right) {
                                         Expr::New(exp) => {
                                             let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
-                                            let lit_type = exp.callee.expect_ident().sym.to_string();
+                                            let _lit_type = exp.callee.expect_ident().sym.to_string();
                                             match right_lit {
                                                 Lit::Num(num) => {
                                                     // match lit_type {
@@ -950,7 +942,7 @@ impl ProgramInstruction {
                                             }
                                         },
         
-                                        Expr::Call(CallExpr { span, callee, args, type_args }) => {
+                                        Expr::Call(CallExpr { span: _, callee, args, type_args: _ }) => {
                                             let memebers = callee.expect_expr().expect_member();
                                             let prop: &str = &memebers.prop.clone().expect_ident().sym.to_string();
                                             match *(memebers.obj) {
@@ -1056,7 +1048,7 @@ impl ProgramInstruction {
                             _ => {}
                         }
                     },
-                    Stmt::Decl(d) => {
+                    Stmt::Decl(_d) => {
                         // let kind  = d.clone().expect_var().kind;
                         // let decls = &d.clone().expect_var().decls[0];
                         // let name = decls.name.clone().expect_ident().id.sym.to_string().to_case(Case::Snake);
@@ -1157,13 +1149,13 @@ pub struct ProgramAccount {
 }
 
 impl ProgramAccount {
-    pub fn from_ts_expr(interface: Box<TsInterfaceDecl>) -> Self {
+    pub fn from_ts_expr(interface: TsInterfaceDecl) -> Self {
         // Ensure custom account extends the Account type
         // TODO: Allow multiple "extends"
         match interface.extends.first() {
             Some(TsExprWithTypeArgs { expr, .. })
                 if expr.clone().ident().is_some()
-                    && expr.clone().ident().unwrap().sym.to_string() == "Account" => {}
+                    && expr.clone().ident().unwrap().sym == "Account" => {}
             _ => panic!("Custom accounts must extend Account type"),
         }
         let name: String = interface.id.sym.to_string();
@@ -1177,9 +1169,10 @@ impl ProgramAccount {
             .map(|f| {
                 let field = f.clone().ts_property_signature().expect("Invalid property");
                 let field_name = field.key.ident().expect("Invalid property").sym.to_string();
-                let field_type: &str = &field
-                    .type_ann
-                    .expect("Invalid type annotation")
+                let binding = field
+                     .type_ann
+                      .expect("Invalid type annotation");
+                let field_type: &str = binding
                     .type_ann
                     .as_ts_type_ref()
                     .expect("Invalid type ref")
@@ -1187,7 +1180,7 @@ impl ProgramAccount {
                     .as_ident()
                     .expect("Invalid ident")
                     .sym
-                    .to_string();
+                    .as_ref();
 
                 match field_type {
                     "Pubkey" => {
@@ -1230,7 +1223,7 @@ impl ProgramAccount {
                     proc_macro2::Span::call_site(),
                 );
                 let field_type: Ident = Ident::new(
-                    field.of_type.split("#").next().unwrap_or(""),
+                    field.of_type.split('#').next().unwrap_or(""),
                     proc_macro2::Span::call_site(),
                 );
                 quote! { pub #field_name: #field_type }
@@ -1280,13 +1273,12 @@ impl ProgramModule {
             .ident
             .clone()
             .expect("Expected ident")
-            .to_string()
+            .as_ref()
             .split("#")
             .next()
             .expect("Expected program to have a valid name")
             .to_string();
         let class_members = &class.class.body;
-        let mut class_methods: Vec<ProgramInstruction> = vec![];
         class_members.iter().for_each(|c| {
             match c.as_class_prop() {
                 Some(c) => {
@@ -1295,7 +1287,6 @@ impl ProgramModule {
                         .as_ident()
                         .expect("Invalid class property")
                         .sym
-                        .to_string()
                         == "PROGRAM_ID"
                     {
                         let val = c
@@ -1305,7 +1296,7 @@ impl ProgramModule {
                             .as_new()
                             .expect("Invalid program ID");
                         assert!(
-                            val.callee.clone().expect_ident().sym.to_string() == "Pubkey",
+                            val.callee.clone().expect_ident().sym == "Pubkey",
                             "Invalid program ID, expected new Pubkey(\"11111111111111.....\")"
                         );
                         self.id = match val.args.clone().expect("Invalid program ID")[0]

@@ -40,7 +40,7 @@ pub fn transpile(module: &Module) {
             ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(class_decl)) => {
                 match class_decl.clone().decl {
                     Decl::TsInterface(interface) => {
-                        let custom_account = ProgramAccount::from_ts_expr(interface);
+                        let custom_account = ProgramAccount::from_ts_expr(*interface);
                         custom_types.insert(custom_account.name.clone(), custom_account.clone());
                         accounts.insert(custom_account.name.clone(), custom_account.clone());
                     },
@@ -52,13 +52,13 @@ pub fn transpile(module: &Module) {
     }
     
     program.accounts = accounts.into_values().collect();
-    program.custom_types = custom_types.clone();
+    program.custom_types.clone_from(&custom_types);
     // print!("{:#?}", program_class);
     match program_class {
         Some(c) => program.populate_from_class_expr(&c, &custom_types),
         None => panic!("Program class undefined")
     }
     let serialized_program = program.to_tokens();
-    fs::write("escrow.rs", PrettyPlease::default().format_str(&serialized_program.to_string()).unwrap()).unwrap()
+    fs::write("escrow.rs", PrettyPlease::default().format_str(serialized_program.to_string()).unwrap()).unwrap()
 }
 
