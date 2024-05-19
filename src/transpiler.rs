@@ -7,8 +7,9 @@ use crate::rs_types::{
     ProgramModule, 
     ProgramAccount
 };
+use anyhow::Result;
 
-pub fn transpile(module: &Module) {
+pub fn transpile(module: &Module) -> Result<()> {
     let mut imports = vec![];
     let mut accounts: HashMap<String, ProgramAccount> = HashMap::new();
     let mut program_class: Option<ClassExpr> = None;
@@ -55,10 +56,13 @@ pub fn transpile(module: &Module) {
     program.custom_types.clone_from(&custom_types);
     // print!("{:#?}", program_class);
     match program_class {
-        Some(c) => program.populate_from_class_expr(&c, &custom_types),
+        Some(c) => {
+            program.populate_from_class_expr(&c, &custom_types)?;
+        },
         None => panic!("Program class undefined")
     }
     let serialized_program = program.to_tokens();
-    fs::write("escrow.rs", PrettyPlease::default().format_str(serialized_program.to_string()).unwrap()).unwrap()
+    fs::write("escrow.rs", PrettyPlease::default().format_str(serialized_program.to_string())?)?;
+    Ok(())
 }
 

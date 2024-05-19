@@ -1,6 +1,7 @@
 use std::path::Path;
 mod ts_types;
 mod rs_types;
+// mod rs_type1;
 mod transpiler;
 mod errors;
 
@@ -21,8 +22,10 @@ use swc_ecma_parser::{
     Syntax
 };
 use transpiler::transpile;
+use anyhow::Result;
 
-fn main() {
+
+fn main() -> Result<()> {
     let cm: Lrc<SourceMap> = Default::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
@@ -59,5 +62,6 @@ fn main() {
         .map_err(|e| e.into_diagnostic(&handler).emit())
         .expect("Failed to parse module.");
 
-    transpile(&module);
+    transpile(&module)?;
+    Ok(())
 }

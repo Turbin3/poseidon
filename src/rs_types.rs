@@ -17,6 +17,7 @@ use crate::{
     errors::PoseidonError,
     ts_types::{rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_TYPES},
 };
+use anyhow::{anyhow, Ok, Result};
 
 #[derive(Debug)]
 #[derive(Clone)]
@@ -247,7 +248,7 @@ impl ProgramInstruction {
         }
         amount
     }
-    pub fn get_seeds(seeds : Vec<Option<ExprOrSpread>>) -> Vec<TokenStream> {
+    pub fn get_seeds(seeds : &Vec<Option<ExprOrSpread>>) -> Vec<TokenStream> {
         let mut seeds_token: Vec<TokenStream> = vec![];
         for elem in seeds.into_iter().flatten() {
                 match *(elem.expr.clone()) {
@@ -318,7 +319,7 @@ impl ProgramInstruction {
     pub fn from_class_method(
         c: &ClassMethod,
         custom_accounts: &HashMap<String, ProgramAccount>,
-    ) -> Self {
+    ) -> Result<Self> {
         // Get name
         let name = c.key.clone().expect_ident().sym.to_string();
         // println!("{}",name);
@@ -441,80 +442,101 @@ impl ProgramInstruction {
             }
         });
 
-        c.clone()
+        let _ = c.clone()
             .function
             .body
-            .expect("Invalid statement")
-            .stmts
+            .ok_or(anyhow!("block statement none"))
+            ?.stmts
             .iter()
-            .for_each(|s| {
+            .map(|s| {
                 // println!("start : {:#?}", s);
                 match s.clone() {
                     Stmt::Expr(e) => {
                         let s = e.expr;
                         match *s {
                             Expr::Call(c) => {
-                                let parent_call = c.clone().callee.expect_expr().expect_member();
+                                let parent_call = c.callee.as_expr().ok_or(PoseidonError::NoExprInCall(String::from("parent")))?.as_member().ok_or(PoseidonError::NoMemInExprOfCall(String::from("parent")))?;
         
-                                let members: MemberExpr;
-                                let mut obj: String = String::from("");
-                                let mut prop: String = String::from("");
-                                let mut derive_args: Vec<ExprOrSpread> = vec![] ;
+                                let members: &MemberExpr;
+                                let mut obj = "";
+                                let mut prop = "";
+                                let mut derive_args: &Vec<ExprOrSpread> = &vec![] ;
         
                                 if parent_call.obj.is_call() {
                                     members = parent_call
                                         .obj
-                                        .clone()
-                                        .expect_call()
-                                        .callee
-                                        .clone()
-                                        .expect_expr()
-                                        .expect_member();
+                                        .as_call()
+                                        .ok_or(anyhow!("expected a call"))
+                                        ?.callee
+                                        .as_expr()
+                                        .ok_or(anyhow!("expected a call in the obj of parent call"))
+                                        ?.as_member()
+                                        .ok_or(anyhow!("expected members in the call found in parent call"))?;
                                     if members.obj.is_ident(){
-                                        obj = members.obj.expect_ident().sym.to_string();
-                                        prop = members.prop.expect_ident().sym.to_string();
+                                        obj = members.obj.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
+                                        prop = members.prop.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
                                         if prop == "derive" {
-                                            derive_args = parent_call.obj.expect_call().args;
+                                            derive_args = &parent_call.obj.as_call().ok_or(anyhow!("expected a expr in parent call"))?.args;
                                         }
                                     } else if members.obj.is_call() {
-                                        let sub_members = members.clone().obj.expect_call().callee.expect_expr().expect_member();
-                                        obj = sub_members.obj.expect_ident().sym.to_string();
-                                        prop = sub_members.prop.expect_ident().sym.to_string();
+                                        let sub_members = members.obj.as_call().ok_or(anyhow!("sub members of parent call doesnt exist"))?.callee.as_expr().ok_or(anyhow!("sub members of parent call doesnt exist"))?.as_member().ok_or(anyhow!("cannot find sub members in the parent calls' members obj"))?;
+                                        obj = sub_members.obj.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
+                                        prop = sub_members.prop.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
                                         if prop == "derive" {
-                                            derive_args = members.obj.expect_call().args;
+                                            derive_args = &members.obj.as_call().ok_or(anyhow!("expected a expr in parent call"))?.args;
                                         }
         
                                     }
                                 } else if parent_call.obj.is_ident() {
-                                    obj = parent_call.clone().obj.expect_ident().sym.to_string();
-                                    prop = parent_call.prop.expect_ident().sym.to_string();
+                                    obj = parent_call.obj.as_ident().ok_or(anyhow!("obj doesnt exist in obj found in parent call"))?.sym.as_ref();
+                                    prop = parent_call.prop.as_ident().ok_or(anyhow!("obj doesnt exist in obj found in parent call"))?.sym.as_ref();
                                     if prop.contains("derive") {
                                         // if(ix_accounts.get(&obj))
-                                        derive_args = c.clone().args;
+                                        derive_args = &c.args;
                                     }
                                 }
         
-                                if let Some(cur_ix_acc) = ix_accounts.get_mut(&obj) {
+                                if let Some(cur_ix_acc) = ix_accounts.get_mut(obj) {
                                     if prop.contains("derive") {
                                         // println!("{:#?}", cur_ix_acc.type_str);
                                         let chaincall1prop = c
-                                            .clone()
                                             .callee
-                                            .expect_expr()
-                                            .expect_member()
-                                            .prop
-                                            .expect_ident()
-                                            .sym
-                                            .to_string();
-                                        let mut chaincall2prop = String::from("");
+                                            .as_expr()
+                                            .ok_or(anyhow!("expected a expr"))
+                                            ?.as_member()
+                                            .ok_or(anyhow!("expected a member"))
+                                            ?.prop
+                                            .as_ident()
+                                            .ok_or(anyhow!("expected a ident"))
+                                            ?.sym
+                                            .as_ref();
+                                        let mut chaincall2prop = "";
                                         if c.clone().callee.expect_expr().expect_member().obj.is_call(){
-                                            chaincall2prop = c.clone().callee.expect_expr().expect_member().obj.expect_call().callee.expect_expr().expect_member().prop.expect_ident().sym.to_string();
+                                            chaincall2prop = c
+                                                                .callee
+                                                                .as_expr()
+                                                                .ok_or(anyhow!("expected a expr"))
+                                                                ?.as_member()
+                                                                .ok_or(anyhow!("expected a member"))
+                                                                ?.obj
+                                                                .as_call()
+                                                                .ok_or(anyhow!("expected a call"))
+                                                                ?.callee
+                                                                .as_expr()
+                                                                .ok_or(anyhow!("expected a expr"))
+                                                                ?.as_member()
+                                                                .ok_or(anyhow!("expected a member"))
+                                                                ?.prop
+                                                                .as_ident()
+                                                                .ok_or(anyhow!("expected a ident"))
+                                                                ?.sym
+                                                                .as_ref();
                                         }
                                         
         
                                         if cur_ix_acc.type_str == "AssociatedTokenAccount" {
-                                            let mint = derive_args[0].expr.clone().expect_ident().sym.to_string();
-                                            let ata_auth = derive_args[1].expr.clone().expect_member().obj.expect_ident().sym.to_string();
+                                            let mint = derive_args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                            let ata_auth = derive_args[1].expr.as_member().ok_or(anyhow!("expected a member"))?.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
                                             cur_ix_acc.ata = Some(
                                                 Ata {
                                                     mint: mint.to_case(Case::Snake),
@@ -523,8 +545,8 @@ impl ProgramInstruction {
                                             );
                                             cur_ix_acc.is_mut = true;
                                         } else if cur_ix_acc.type_str == "TokenAccount" {
-                                            let mint = derive_args[1].expr.clone().expect_ident().sym.to_string();
-                                            let ata_auth = derive_args[2].expr.clone().expect_member().obj.expect_ident().sym.to_string();
+                                            let mint = derive_args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                            let ata_auth = derive_args[2].expr.as_member().ok_or(anyhow!("expected a member"))?.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
                                             cur_ix_acc.ata = Some(
                                                 Ata {
                                                     mint: mint.to_case(Case::Snake),
@@ -535,25 +557,25 @@ impl ProgramInstruction {
                                         }
         
                                         if cur_ix_acc.type_str != "AssociatedTokenAccount"{
-                                            let seeds = derive_args[0].expr.clone().expect_array().elems;
+                                            let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
                                             
                                             let seeds_token = ProgramInstruction::get_seeds(seeds);
                                             cur_ix_acc.bump = Some(quote!{
                                                 bump
                                             });
                                             if !seeds_token.is_empty() {
-                                                cur_ix_acc.seeds = Some(seeds_token.clone());
+                                                cur_ix_acc.seeds = Some(seeds_token);
                                                 // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
                                             }
                                         }
                                         if prop == "deriveWithBump" {
-                                            let bump_members = c.clone().args[1].expr.clone().expect_member();
+                                            let bump_members = c.args[1].expr.as_member().ok_or(anyhow!("expected a member"))?;
                                             let bump_prop  = Ident::new(
-                                                bump_members.prop.expect_ident().sym.as_ref(),
+                                                bump_members.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref(),
                                                 Span::call_site(),
                                             );
                                             let bump_obj = Ident::new(
-                                                bump_members.obj.expect_ident().sym.as_ref(),
+                                                bump_members.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref(),
                                                 Span::call_site(),
                                             );
                                             cur_ix_acc.bump = Some(quote!{
@@ -564,25 +586,25 @@ impl ProgramInstruction {
                                         if chaincall1prop == "init" {
                                             ix.uses_system_program = true;
                                             cur_ix_acc.is_init = true;
-                                            if let Some(payer) = ix.signer.clone() {
-                                                cur_ix_acc.payer = Some(payer);
+                                            if let Some(payer) = &ix.signer {
+                                                cur_ix_acc.payer = Some(payer.clone());
                                             }
                                         }
                                         else if chaincall1prop == "initIfNeeded" {
                                             ix.uses_system_program = true;
                                             cur_ix_acc.is_initifneeded = true;
-                                            if let Some(payer) = ix.signer.clone() {
-                                                cur_ix_acc.payer = Some(payer);
+                                            if let Some(payer) = &ix.signer {
+                                                cur_ix_acc.payer = Some(payer.clone());
                                             }
                                         }
                                         if chaincall1prop == "close" {
-                                            cur_ix_acc.close = Some(c.clone().args[0].expr.clone().expect_ident().sym.to_string().to_case(Case::Snake));
+                                            cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref().to_case(Case::Snake));
                                         }
                                         if chaincall2prop == "has" {
-                                            let elems = c.clone().callee.expect_expr().expect_member().obj.expect_call().args[0].expr.clone().expect_array().elems;
+                                            let elems = &c.callee.as_expr().ok_or(anyhow!("expected a expr"))?.as_member().ok_or(anyhow!("expected a member"))?.obj.as_call().ok_or(anyhow!("expected a call"))?.args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
                                             let mut has_one:Vec<String> = vec![];
                                             for elem in elems.into_iter().flatten() {
-                                                    has_one.push(elem.expr.expect_ident().sym.to_string());
+                                                    has_one.push(elem.expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.to_string());
                                             }
                                             cur_ix_acc.has_one = has_one;
                                         }
@@ -913,19 +935,19 @@ impl ProgramInstruction {
                             }
                             Expr::Assign(a) => {
                                 // let op = a.op;
-                                let left_members = a.clone().left.expect_expr().expect_member();
-                                let left_obj = left_members.obj.expect_ident().sym.to_string();
-                                let left_prop = left_members.prop.expect_ident().sym.to_string();
-                                if ix_accounts.contains_key(&left_obj){
+                                let left_members = a.left.as_expr().ok_or(anyhow!("expected a expr"))?.as_member().ok_or(anyhow!("expected a member"))?;
+                                let left_obj = left_members.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                let left_prop = left_members.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                if ix_accounts.contains_key(left_obj){
                                     let left_obj_ident = Ident::new(&left_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                     let left_prop_ident = Ident::new(&left_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                    let cur_acc = ix_accounts.get_mut(&left_obj).unwrap();
+                                    let cur_acc = ix_accounts.get_mut(left_obj).unwrap();
                                     cur_acc.is_mut = true;
         
                                     match *(a.clone().right) {
                                         Expr::New(exp) => {
-                                            let right_lit  = exp.args.expect("need some value in  new expression")[0].expr.clone().expect_lit();
-                                            let _lit_type = exp.callee.expect_ident().sym.to_string();
+                                            let right_lit  = exp.args.ok_or(anyhow!("need some value in  new expression"))?[0].expr.clone().expect_lit();
+                                            let _lit_type = exp.callee.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
                                             match right_lit {
                                                 Lit::Num(num) => {
                                                     // match lit_type {
@@ -943,12 +965,12 @@ impl ProgramInstruction {
                                         },
         
                                         Expr::Call(CallExpr { span: _, callee, args, type_args: _ }) => {
-                                            let memebers = callee.expect_expr().expect_member();
-                                            let prop: &str = &memebers.prop.clone().expect_ident().sym.to_string();
-                                            match *(memebers.obj) {
+                                            let memebers = callee.as_expr().ok_or(anyhow!("expected a expr"))?.as_member().ok_or(anyhow!("expected a member")).cloned()?;
+                                            let prop: &str = &memebers.prop.as_ident().ok_or(anyhow!("expected a prop"))?.sym.as_ref();
+                                            match *memebers.obj {
                                                 Expr::Member(sub_members) => {
-                                                    let sub_prop = sub_members.prop.expect_ident().sym.to_string();
-                                                    let sub_obj = sub_members.obj.expect_ident().sym.to_string();
+                                                    let sub_prop = sub_members.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                                    let sub_obj = sub_members.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
                                                     let right_sub_obj_ident = Ident::new(&sub_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                                     let right_sub_prop_ident = Ident::new(&sub_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
                                                     match *(args[0].expr.clone()) {
@@ -1017,8 +1039,8 @@ impl ProgramInstruction {
                                                     }
                                                 }
                                                 Expr::Ident(right_obj) => {
-                                                    let right_obj = right_obj.sym.to_string();
-                                                    let right_prop = memebers.prop.expect_ident().sym.to_string();
+                                                    let right_obj = right_obj.sym.as_ref();
+                                                    let right_prop = memebers.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
                                                     // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
                                                     // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
 
@@ -1033,8 +1055,8 @@ impl ProgramInstruction {
                                             }
                                         }
                                         Expr::Member(m) => {
-                                            let right_obj = m.obj.expect_ident().sym.to_string();
-                                            let right_prop = m.prop.expect_ident().sym.to_string();
+                                            let right_obj = m.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                            let right_prop = m.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
                                             let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let right_prop_ident = Ident::new(&right_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             ix_body.push(quote!{
@@ -1064,15 +1086,16 @@ impl ProgramInstruction {
                     }
                     _ => {}
                 }
+                Ok(())
         
-            });
+            }).collect::<Result<Vec<()>>>()?;
 
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.body = ix_body;
         ix.args = ix_arguments;
         // println!("{:#?} : {:#?}",ix.name, ix.accounts);
-        ix
+        Ok(ix)
     }
 
     // 2 instructions cant have same context
@@ -1268,7 +1291,7 @@ impl ProgramModule {
         &mut self,
         class: &ClassExpr,
         custom_accounts: &HashMap<String, ProgramAccount>,
-    ) {
+    ) -> Result<()> {
         self.name = class
             .ident
             .clone()
@@ -1279,7 +1302,7 @@ impl ProgramModule {
             .expect("Expected program to have a valid name")
             .to_string();
         let class_members = &class.class.body;
-        class_members.iter().for_each(|c| {
+        let _ = class_members.iter().map(|c| {
             match c.as_class_prop() {
                 Some(c) => {
                     // Handle as a class prop
@@ -1316,13 +1339,15 @@ impl ProgramModule {
                 None => match c.as_method() {
                     Some(c) => {
                         // Handle as a class method
-                        let ix = ProgramInstruction::from_class_method(c, custom_accounts);
+                        let ix = ProgramInstruction::from_class_method(c, custom_accounts).map_err(|e|anyhow!(e.to_string()))?;
                         self.instructions.push(ix);
                     }
                     None => panic!("Invalid class property or member"),
                 },
             }
-        });
+            Ok(())
+        }).collect::<Result<Vec<()>>>();
+        Ok(())
     }
 
     pub fn to_tokens(&self) -> TokenStream {
