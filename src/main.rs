@@ -1,29 +1,19 @@
 use std::path::Path;
-mod ts_types;
 mod rs_types;
+mod ts_types;
 // mod rs_type1;
-mod transpiler;
 mod errors;
+mod transpiler;
 
+use anyhow::Result;
 use swc_common::{
     self,
-    errors::{
-        ColorConfig,
-        Handler
-    },
-    sync::Lrc, 
-    SourceMap
+    errors::{ColorConfig, Handler},
+    sync::Lrc,
+    SourceMap,
 };
-use swc_ecma_parser::{
-    lexer::Lexer, 
-    Capturing, 
-    Parser, 
-    StringInput, 
-    Syntax
-};
+use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 use transpiler::transpile;
-use anyhow::Result;
-
 
 fn main() -> Result<()> {
     let cm: Lrc<SourceMap> = Default::default();

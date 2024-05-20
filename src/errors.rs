@@ -5,8 +5,14 @@ use thiserror::*;
 pub enum PoseidonError {
     #[error("Invalid type: {0}")]
     InvalidType(String),
-    #[error("expected a expr in {0} call")]
-    NoExprInCall(String),
-    #[error("expected a member in the expr of a {0} call")]
-    NoMemInExprOfCall(String)
+    #[error("expected a Member type")]
+    MemberNotFound,
+    #[error("expected a Expr type")]
+    ExprNotFound,
+    #[error("expected a Ident type")]
+    IdentNotFound,
+    #[error("expected a Array type")]
+    ArrayNotFound,
+    #[error("expected a Call type")]
+    CallNotFound,
 }

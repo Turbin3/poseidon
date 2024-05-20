@@ -1,13 +1,10 @@
 use core::panic;
-use std::{fs, collections::HashMap};
 use rust_format::{Formatter, PrettyPlease, RustFmt};
+use std::{collections::HashMap, fs};
 
-use swc_ecma_ast::*;
-use crate::rs_types::{
-    ProgramModule, 
-    ProgramAccount
-};
+use crate::rs_types::{ProgramAccount, ProgramModule};
 use anyhow::Result;
+use swc_ecma_ast::*;
 
 pub fn transpile(module: &Module) -> Result<()> {
     let mut imports = vec![];
@@ -34,9 +31,9 @@ pub fn transpile(module: &Module) -> Result<()> {
             ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultDecl(default_export_decl)) => {
                 program_class = match default_export_decl.clone().decl.class() {
                     Some(p) => Some(p),
-                    None => panic!("Default export must be a Class")
+                    None => panic!("Default export must be a Class"),
                 };
-            },
+            }
             // Extract custom accounts
             ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(class_decl)) => {
                 match class_decl.clone().decl {
@@ -44,25 +41,27 @@ pub fn transpile(module: &Module) -> Result<()> {
                         let custom_account = ProgramAccount::from_ts_expr(*interface);
                         custom_types.insert(custom_account.name.clone(), custom_account.clone());
                         accounts.insert(custom_account.name.clone(), custom_account.clone());
-                    },
-                    _ => panic!("Invalid export statement")
+                    }
+                    _ => panic!("Invalid export statement"),
                 }
             }
-            _ => panic!("Invalid syntax, cannot match: {:?}", item)
+            _ => panic!("Invalid syntax, cannot match: {:?}", item),
         }
     }
-    
+
     program.accounts = accounts.into_values().collect();
     program.custom_types.clone_from(&custom_types);
     // print!("{:#?}", program_class);
     match program_class {
         Some(c) => {
             program.populate_from_class_expr(&c, &custom_types)?;
-        },
-        None => panic!("Program class undefined")
+        }
+        None => panic!("Program class undefined"),
     }
     let serialized_program = program.to_tokens();
-    fs::write("escrow.rs", PrettyPlease::default().format_str(serialized_program.to_string())?)?;
+    fs::write(
+        "escrow.rs",
+        PrettyPlease::default().format_str(serialized_program.to_string())?,
+    )?;
     Ok(())
 }
-

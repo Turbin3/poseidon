@@ -231,13 +231,13 @@ impl ProgramInstruction {
                 let amount_obj = m
                     .obj
                     .as_ident()
-                    .ok_or(anyhow!("expected a ident"))?
+                    .ok_or(PoseidonError::IdentNotFound)?
                     .sym
                     .as_ref();
                 let amount_prop = m
                     .prop
                     .as_ident()
-                    .ok_or(anyhow!("expected a ident"))?
+                    .ok_or(PoseidonError::IdentNotFound)?
                     .sym
                     .as_ref();
                 let amount_obj_ident = Ident::new(
@@ -289,7 +289,7 @@ impl ProgramInstruction {
                     let seed_prop = Ident::new(
                         m.prop
                             .as_ident()
-                            .ok_or(anyhow!("expected a ident"))?
+                            .ok_or(PoseidonError::IdentNotFound)?
                             .sym
                             .as_ref(),
                         Span::call_site(),
@@ -297,7 +297,7 @@ impl ProgramInstruction {
                     let seed_obj = Ident::new(
                         m.obj
                             .as_ident()
-                            .ok_or(anyhow!("expected a ident"))?
+                            .ok_or(PoseidonError::IdentNotFound)?
                             .sym
                             .as_ref(),
                         Span::call_site(),
@@ -310,15 +310,15 @@ impl ProgramInstruction {
                     let seed_members = c
                         .callee
                         .as_expr()
-                        .ok_or(anyhow!("expected a expr"))?
+                        .ok_or(PoseidonError::ExprNotFound)?
                         .as_member()
-                        .ok_or(anyhow!("expected a member"))?;
+                        .ok_or(PoseidonError::MemberNotFound)?;
                     if seed_members.obj.is_ident() {
                         let seed_obj_ident = Ident::new(
                             seed_members
                                 .obj
                                 .as_ident()
-                                .ok_or(anyhow!("expected a ident"))?
+                                .ok_or(PoseidonError::IdentNotFound)?
                                 .sym
                                 .as_ref(),
                             Span::call_site(),
@@ -326,7 +326,7 @@ impl ProgramInstruction {
                         if seed_members
                             .prop
                             .as_ident()
-                            .ok_or(anyhow!("expected a ident"))?
+                            .ok_or(PoseidonError::IdentNotFound)?
                             .sym
                             .as_ref()
                             == "toBytes"
@@ -339,7 +339,7 @@ impl ProgramInstruction {
                         if seed_members
                             .prop
                             .as_ident()
-                            .ok_or(anyhow!("expected a ident"))?
+                            .ok_or(PoseidonError::IdentNotFound)?
                             .sym
                             .as_ref()
                             == "toBytes"
@@ -359,10 +359,10 @@ impl ProgramInstruction {
                                 seed_members
                                     .obj
                                     .as_member()
-                                    .ok_or(anyhow!("expected a member"))?
+                                    .ok_or(PoseidonError::MemberNotFound)?
                                     .prop
                                     .as_ident()
-                                    .ok_or(anyhow!("expected a ident"))?
+                                    .ok_or(PoseidonError::IdentNotFound)?
                                     .sym
                                     .as_ref(),
                                 Span::call_site(),
@@ -387,7 +387,7 @@ impl ProgramInstruction {
         let name = c
             .key
             .as_ident()
-            .ok_or(anyhow!("expected a ident"))?
+            .ok_or(PoseidonError::IdentNotFound)?
             .sym
             .to_string();
         // println!("{}",name);
@@ -528,7 +528,7 @@ impl ProgramInstruction {
                         let s = e.expr;
                         match *s {
                             Expr::Call(c) => {
-                                let parent_call = c.callee.as_expr().ok_or(PoseidonError::NoExprInCall(String::from("parent")))?.as_member().ok_or(PoseidonError::NoMemInExprOfCall(String::from("parent")))?;
+                                let parent_call = c.callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound)?;
                                 let members: &MemberExpr;
                                 let mut obj = "";
                                 let mut prop = "";
@@ -537,29 +537,29 @@ impl ProgramInstruction {
                                     members = parent_call
                                         .obj
                                         .as_call()
-                                        .ok_or(anyhow!("expected a call"))
+                                        .ok_or(PoseidonError::CallNotFound)
                                         ?.callee
                                         .as_expr()
-                                        .ok_or(anyhow!("expected a call in the obj of parent call"))
+                                        .ok_or(PoseidonError::ExprNotFound)
                                         ?.as_member()
-                                        .ok_or(anyhow!("expected members in the call found in parent call"))?;
+                                        .ok_or(PoseidonError::MemberNotFound)?;
                                     if members.obj.is_ident(){
-                                        obj = members.obj.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
-                                        prop = members.prop.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
+                                        obj = members.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        prop = members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         if prop == "derive" {
-                                            derive_args = &parent_call.obj.as_call().ok_or(anyhow!("expected a expr in parent call"))?.args;
+                                            derive_args = &parent_call.obj.as_call().ok_or(PoseidonError::CallNotFound)?.args;
                                         }
                                     } else if members.obj.is_call() {
-                                        let sub_members = members.obj.as_call().ok_or(anyhow!("sub members of parent call doesnt exist"))?.callee.as_expr().ok_or(anyhow!("sub members of parent call doesnt exist"))?.as_member().ok_or(anyhow!("cannot find sub members in the parent calls' members obj"))?;
-                                        obj = sub_members.obj.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
-                                        prop = sub_members.prop.as_ident().ok_or(anyhow!("obj doesnt exist in members of call found in parent call"))?.sym.as_ref();
+                                        let sub_members = members.obj.as_call().ok_or(PoseidonError::CallNotFound)?.callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound)?;
+                                        obj = sub_members.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        prop = sub_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         if prop == "derive" {
-                                            derive_args = &members.obj.as_call().ok_or(anyhow!("expected a expr in parent call"))?.args;
+                                            derive_args = &members.obj.as_call().ok_or(PoseidonError::CallNotFound)?.args;
                                         }
                                     }
                                 } else if parent_call.obj.is_ident() {
-                                    obj = parent_call.obj.as_ident().ok_or(anyhow!("obj doesnt exist in obj found in parent call"))?.sym.as_ref();
-                                    prop = parent_call.prop.as_ident().ok_or(anyhow!("obj doesnt exist in obj found in parent call"))?.sym.as_ref();
+                                    obj = parent_call.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                    prop = parent_call.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                     if prop.contains("derive") {
                                         // if(ix_accounts.get(&obj))
                                         derive_args = &c.args;
@@ -571,12 +571,12 @@ impl ProgramInstruction {
                                         let chaincall1prop = c
                                             .callee
                                             .as_expr()
-                                            .ok_or(anyhow!("expected a expr"))
+                                            .ok_or(PoseidonError::ExprNotFound)
                                             ?.as_member()
-                                            .ok_or(anyhow!("expected a member"))
+                                            .ok_or(PoseidonError::MemberNotFound)
                                             ?.prop
                                             .as_ident()
-                                            .ok_or(anyhow!("expected a ident"))
+                                            .ok_or(PoseidonError::IdentNotFound)
                                             ?.sym
                                             .as_ref();
                                         let mut chaincall2prop = "";
@@ -584,26 +584,26 @@ impl ProgramInstruction {
                                             chaincall2prop = c
                                                                 .callee
                                                                 .as_expr()
-                                                                .ok_or(anyhow!("expected a expr"))
+                                                                .ok_or(PoseidonError::ExprNotFound)
                                                                 ?.as_member()
-                                                                .ok_or(anyhow!("expected a member"))
+                                                                .ok_or(PoseidonError::MemberNotFound)
                                                                 ?.obj
                                                                 .as_call()
-                                                                .ok_or(anyhow!("expected a call"))
+                                                                .ok_or(PoseidonError::CallNotFound)
                                                                 ?.callee
                                                                 .as_expr()
-                                                                .ok_or(anyhow!("expected a expr"))
+                                                                .ok_or(PoseidonError::ExprNotFound)
                                                                 ?.as_member()
-                                                                .ok_or(anyhow!("expected a member"))
+                                                                .ok_or(PoseidonError::MemberNotFound)
                                                                 ?.prop
                                                                 .as_ident()
-                                                                .ok_or(anyhow!("expected a ident"))
+                                                                .ok_or(PoseidonError::IdentNotFound)
                                                                 ?.sym
                                                                 .as_ref();
                                         }
                                         if cur_ix_acc.type_str == "AssociatedTokenAccount" {
-                                            let mint = derive_args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                            let ata_auth = derive_args[1].expr.as_member().ok_or(anyhow!("expected a member"))?.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                            let mint = derive_args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let ata_auth = derive_args[1].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             cur_ix_acc.ata = Some(
                                                 Ata {
                                                     mint: mint.to_case(Case::Snake),
@@ -612,8 +612,8 @@ impl ProgramInstruction {
                                             );
                                             cur_ix_acc.is_mut = true;
                                         } else if cur_ix_acc.type_str == "TokenAccount" {
-                                            let mint = derive_args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                            let ata_auth = derive_args[2].expr.as_member().ok_or(anyhow!("expected a member"))?.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                            let mint = derive_args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let ata_auth = derive_args[2].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             cur_ix_acc.ata = Some(
                                                 Ata {
                                                     mint: mint.to_case(Case::Snake),
@@ -634,13 +634,13 @@ impl ProgramInstruction {
                                             }
                                         }
                                         if prop == "deriveWithBump" {
-                                            let bump_members = c.args[1].expr.as_member().ok_or(anyhow!("expected a member"))?;
+                                            let bump_members = c.args[1].expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
                                             let bump_prop  = Ident::new(
-                                                bump_members.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref(),
+                                                bump_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref(),
                                                 Span::call_site(),
                                             );
                                             let bump_obj = Ident::new(
-                                                bump_members.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref(),
+                                                bump_members.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref(),
                                                 Span::call_site(),
                                             );
                                             cur_ix_acc.bump = Some(quote!{
@@ -663,13 +663,13 @@ impl ProgramInstruction {
                                             }
                                         }
                                         if chaincall1prop == "close" {
-                                            cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref().to_case(Case::Snake));
+                                            cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                         }
                                         if chaincall2prop == "has" {
-                                            let elems = &c.callee.as_expr().ok_or(anyhow!("expected a expr"))?.as_member().ok_or(anyhow!("expected a member"))?.obj.as_call().ok_or(anyhow!("expected a call"))?.args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
+                                            let elems = &c.callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_call().ok_or(PoseidonError::CallNotFound)?.args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
                                             let mut has_one:Vec<String> = vec![];
                                             for elem in elems.into_iter().flatten() {
-                                                    has_one.push(elem.expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.to_string());
+                                                    has_one.push(elem.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.to_string());
                                             }
                                             cur_ix_acc.has_one = has_one;
                                         }
@@ -678,8 +678,8 @@ impl ProgramInstruction {
                                 // need to implement signer seeds
                                 if obj == "SystemProgram" {
                                     if prop == "transfer" {
-                                        let from_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let to_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let from_acc_ident = Ident::new(from_acc, proc_macro2::Span::call_site());
                                         let to_acc_ident = Ident::new(to_acc, proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[2].expr;
@@ -699,9 +699,9 @@ impl ProgramInstruction {
                                 }
                                 if obj == "TokenProgram" {
                                     if prop == "transfer" {
-                                        let from_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let to_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -740,9 +740,9 @@ impl ProgramInstruction {
                                             }
                                         }
                                     } else if prop == "burn" {
-                                        let mint_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let from_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let from_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -762,9 +762,9 @@ impl ProgramInstruction {
                                             burn(cpi_ctx, #amount)?;
                                         })
                                     } else if prop == "mintTo" {
-                                        let mint_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let to_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -783,9 +783,9 @@ impl ProgramInstruction {
                                             mint_to(cpi_ctx, #amount)?;
                                         })
                                     } else if prop == "approve" {
-                                        let to_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let delegate_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let delegate_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -805,10 +805,10 @@ impl ProgramInstruction {
                                         })
                                     // not sure why decimals is in poseidon ts 
                                     } else if prop == "approveChecked" {
-                                        let to_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let delegate_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[3].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let delegate_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[3].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake),
                                         proc_macro2::Span::call_site());
                                         let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake),
@@ -831,9 +831,9 @@ impl ProgramInstruction {
                                             approve_checked(cpi_ctx, #amount)?;
                                         })
                                     } else if prop == "closeAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let destination_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let destination_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let destination_acc_ident = Ident::new(&destination_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -850,9 +850,9 @@ impl ProgramInstruction {
                                             close_account(cpi_ctx)?;
                                         })
                                     } else if prop == "freezeAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -869,9 +869,9 @@ impl ProgramInstruction {
                                             freeze_account(cpi_ctx)?;
                                         })
                                     } else if prop == "initializeAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -888,8 +888,8 @@ impl ProgramInstruction {
                                             initialize_account3(cpi_ctx)?;
                                         })
                                     } else if prop == "revoke" {
-                                        let source_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let source_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let source_acc_ident = Ident::new(&source_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         ix_body.push(quote!{
@@ -904,7 +904,7 @@ impl ProgramInstruction {
                                             revoke(cpi_ctx)?;
                                         })
                                     } else if prop == "syncNative" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         ix_body.push(quote!{
                                             let cpi_ctx = CpiContext::new(
@@ -917,9 +917,9 @@ impl ProgramInstruction {
                                             sync_native(cpi_ctx)?;
                                         })
                                     } else if prop == "thawAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -937,10 +937,10 @@ impl ProgramInstruction {
                                             thaw_account(cpi_ctx)?;
                                         })
                                     } else if prop == "transferChecked" {
-                                        let from_acc = c.args[0].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let to_acc = c.args[2].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                        let auth_acc = c.args[3].expr.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                        let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let to_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let auth_acc = c.args[3].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -986,9 +986,9 @@ impl ProgramInstruction {
                             }
                             Expr::Assign(a) => {
                                 // let op = a.op;
-                                let left_members = a.left.as_expr().ok_or(anyhow!("expected a expr"))?.as_member().ok_or(anyhow!("expected a member"))?;
-                                let left_obj = left_members.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                let left_prop = left_members.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                let left_members = a.left.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound)?;
+                                let left_obj = left_members.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                let left_prop = left_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                 if ix_accounts.contains_key(left_obj){
                                     let left_obj_ident = Ident::new(&left_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                     let left_prop_ident = Ident::new(&left_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -997,7 +997,7 @@ impl ProgramInstruction {
                                     match *(a.clone().right) {
                                         Expr::New(exp) => {
                                             let right_lit  = exp.args.ok_or(anyhow!("need some value in  new expression"))?[0].expr.clone().expect_lit();
-                                            let _lit_type = exp.callee.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                            let _lit_type = exp.callee.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             match right_lit {
                                                 Lit::Num(num) => {
                                                     // match lit_type {
@@ -1013,12 +1013,12 @@ impl ProgramInstruction {
                                             }
                                         },
                                         Expr::Call(CallExpr { span: _, callee, args, type_args: _ }) => {
-                                            let memebers = callee.as_expr().ok_or(anyhow!("expected a expr"))?.as_member().ok_or(anyhow!("expected a member")).cloned()?;
+                                            let memebers = callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound).cloned()?;
                                             let prop: &str = &memebers.prop.as_ident().ok_or(anyhow!("expected a prop"))?.sym.as_ref();
                                             match *memebers.obj {
                                                 Expr::Member(sub_members) => {
-                                                    let sub_prop = sub_members.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                                    let sub_obj = sub_members.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                                    let sub_prop = sub_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                                    let sub_obj = sub_members.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                                     let right_sub_obj_ident = Ident::new(&sub_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                                     let right_sub_prop_ident = Ident::new(&sub_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
                                                     match *(args[0].expr.clone()) {
@@ -1088,7 +1088,7 @@ impl ProgramInstruction {
                                                 }
                                                 Expr::Ident(right_obj) => {
                                                     let right_obj = right_obj.sym.as_ref();
-                                                    let right_prop = memebers.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                                    let right_prop = memebers.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                                     // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
                                                     // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
 
@@ -1103,8 +1103,8 @@ impl ProgramInstruction {
                                             }
                                         }
                                         Expr::Member(m) => {
-                                            let right_obj = m.obj.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
-                                            let right_prop = m.prop.as_ident().ok_or(anyhow!("expected a ident"))?.sym.as_ref();
+                                            let right_obj = m.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let right_prop = m.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let right_prop_ident = Ident::new(&right_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             ix_body.push(quote!{

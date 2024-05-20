@@ -1,34 +1,34 @@
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
 
 pub const STANDARD_TYPES: [&str; 16] = [
-    "u8", 
-    "i8", 
-    "u16", 
-    "i16", 
-    "u32", 
-    "i32", 
-    "u64", 
-    "i64", 
-    "u128", 
-    "i128", 
-    "usize", 
-    "isize", 
-    "boolean", 
-    "Uint8Array", 
-    "string", 
-    "String"
+    "u8",
+    "i8",
+    "u16",
+    "i16",
+    "u32",
+    "i32",
+    "u64",
+    "i64",
+    "u128",
+    "i128",
+    "usize",
+    "isize",
+    "boolean",
+    "Uint8Array",
+    "string",
+    "String",
 ];
 
 pub const STANDARD_ACCOUNT_TYPES: [&str; 7] = [
-    "Signer", 
-    "UncheckedAccount", 
+    "Signer",
+    "UncheckedAccount",
     "AccountInfo",
     "TokenAccount",
     "SystemAccount",
     "AssociatedTokenAccount",
-    "Mint"
+    "Mint",
 ];
 
 use crate::errors::PoseidonError;
@@ -59,22 +59,22 @@ use crate::errors::PoseidonError;
 // }
 pub fn rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
     match str {
-        "string" | "String" => Ok( quote! { String }),
-        "u8" => Ok(quote!{ u8, }),
-        "i8" => Ok(quote!{ i8, }),
-        "u16" => Ok(quote!{ u16, }),
-        "i16" => Ok(quote!{ i16, }),
-        "u32" => Ok(quote!{ u32, }),
-        "i32" => Ok(quote!{ i32, }),
-        "u64" => Ok(quote!{ u64, }),
-        "i64" => Ok(quote!{ i64, }),
-        "u128" => Ok(quote!{ u128, }),
-        "i128" => Ok(quote!{ i128, }),
-        "usize" => Ok(quote!{ usize, }),
-        "isize" => Ok(quote!{ isize, }),
-        "boolean" => Ok(quote!{ bool, }),
-        "Uint8Array" => Ok(quote!{ Vec<u8>, }),
+        "string" | "String" => Ok(quote! { String }),
+        "u8" => Ok(quote! { u8, }),
+        "i8" => Ok(quote! { i8, }),
+        "u16" => Ok(quote! { u16, }),
+        "i16" => Ok(quote! { i16, }),
+        "u32" => Ok(quote! { u32, }),
+        "i32" => Ok(quote! { i32, }),
+        "u64" => Ok(quote! { u64, }),
+        "i64" => Ok(quote! { i64, }),
+        "u128" => Ok(quote! { u128, }),
+        "i128" => Ok(quote! { i128, }),
+        "usize" => Ok(quote! { usize, }),
+        "isize" => Ok(quote! { isize, }),
+        "boolean" => Ok(quote! { bool, }),
+        "Uint8Array" => Ok(quote! { Vec<u8>, }),
         // "Signer" => Ok(quote!{Signer}),
-        _ => Err(PoseidonError::InvalidType(str.to_string()))?
+        _ => Err(PoseidonError::InvalidType(str.to_string()))?,
     }
 }
