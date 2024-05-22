@@ -206,7 +206,7 @@ pub struct ProgramInstruction {
     pub uses_system_program: bool,
     pub uses_token_program: bool,
     pub uses_associated_token_program: bool,
-    pub instruction_attribute: Option<Vec<TokenStream>>,
+    pub instruction_attributes: Option<Vec<TokenStream>>,
 }
 
 impl ProgramInstruction {
@@ -220,7 +220,7 @@ impl ProgramInstruction {
             uses_system_program: false,
             uses_token_program: false,
             uses_associated_token_program: false,
-            instruction_attribute: None,
+            instruction_attributes: None,
         }
     }
     pub fn get_amount_from_ts_arg(amount_expr: &Expr) -> Result<TokenStream> {
@@ -268,8 +268,9 @@ impl ProgramInstruction {
         }
         Ok(amount)
     }
-    pub fn get_seeds(seeds: &Vec<Option<ExprOrSpread>>) -> Result<Vec<TokenStream>> {
+    pub fn get_seeds(&mut self, seeds: &Vec<Option<ExprOrSpread>>) -> Result<Vec<TokenStream>> {
         let mut seeds_token: Vec<TokenStream> = vec![];
+        let mut ix_attribute_token: Vec<TokenStream> = vec![];
         for elem in seeds.into_iter().flatten() {
             match *(elem.expr.clone()) {
                 Expr::Lit(Lit::Str(seedstr)) => {
@@ -314,13 +315,14 @@ impl ProgramInstruction {
                         .as_member()
                         .ok_or(PoseidonError::MemberNotFound)?;
                     if seed_members.obj.is_ident() {
+                        let seed_obj = seed_members
+                        .obj
+                        .as_ident()
+                        .ok_or(PoseidonError::IdentNotFound)?
+                        .sym
+                        .as_ref();
                         let seed_obj_ident = Ident::new(
-                            seed_members
-                                .obj
-                                .as_ident()
-                                .ok_or(PoseidonError::IdentNotFound)?
-                                .sym
-                                .as_ref(),
+                            seed_obj,
                             Span::call_site(),
                         );
                         if seed_members
@@ -333,8 +335,20 @@ impl ProgramInstruction {
                         {
                             seeds_token.push(quote! {
                                 #seed_obj_ident.to_le_bytes().as_ref()
-                            })
+                            });
                         }
+
+                        for arg in self.args.iter() {
+                            if arg.name == seed_obj {
+                                let type_ident = &arg.of_type;
+                                
+
+                                ix_attribute_token.push(quote! {
+                                    #seed_obj_ident : #type_ident
+                                })
+                            }
+                        }
+
                     } else if seed_members.obj.is_member() {
                         if seed_members
                             .prop
@@ -375,6 +389,9 @@ impl ProgramInstruction {
                 }
                 _ => {}
             }
+        }
+        if !ix_attribute_token.is_empty(){
+            self.instruction_attributes = Some(ix_attribute_token);
         }
         Ok(seeds_token)
     }
@@ -514,6 +531,8 @@ impl ProgramInstruction {
                 panic!("Invalid variable or account type: {}", of_type);
             }
         });
+        ix.args = ix_arguments;
+
 
         let _ = c.clone()
             .function
@@ -624,7 +643,7 @@ impl ProgramInstruction {
                                         }
                                         if cur_ix_acc.type_str != "AssociatedTokenAccount"{
                                             let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
-                                            let seeds_token = ProgramInstruction::get_seeds(seeds)?;
+                                            let seeds_token = ix.get_seeds(seeds)?;
                                             cur_ix_acc.bump = Some(quote!{
                                                 bump
                                             });
@@ -1169,7 +1188,6 @@ impl ProgramInstruction {
         // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.body = ix_body;
-        ix.args = ix_arguments;
         // println!("{:#?} : {:#?}",ix.name, ix.accounts);
         Ok(ix)
     }
@@ -1210,6 +1228,18 @@ impl ProgramInstruction {
             proc_macro2::Span::call_site(),
         );
         let mut accounts: Vec<TokenStream> = self.accounts.iter().map(|a| a.to_tokens()).collect();
+
+        let ix_attributes = match &self.instruction_attributes {
+            Some(s) => {
+                // println!("{:#?}", s);
+                quote! {
+                    // # [instruction()],
+                    // [#(#s),*]
+                    #[instruction(#(#s),*)]
+                }
+            }
+            None => quote! {},
+        };
         if self.uses_associated_token_program {
             accounts.push(quote! {
                 pub associated_token_program: Program<'info, AssociatedToken>,
@@ -1227,6 +1257,7 @@ impl ProgramInstruction {
         }
         quote! {
             #[derive(Accounts)]
+            #ix_attributes
             pub struct #ctx_name<'info> {
                 #(#accounts)*
             }

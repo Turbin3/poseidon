@@ -2,7 +2,7 @@ use anyhow::{Error, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
 
-pub const STANDARD_TYPES: [&str; 16] = [
+pub const STANDARD_TYPES: [&str; 17] = [
     "u8",
     "i8",
     "u16",
@@ -19,6 +19,7 @@ pub const STANDARD_TYPES: [&str; 16] = [
     "Uint8Array",
     "string",
     "String",
+    "Pubkey"
 ];
 
 pub const STANDARD_ACCOUNT_TYPES: [&str; 7] = [
@@ -73,6 +74,7 @@ pub fn rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
         "usize" => Ok(quote! { usize, }),
         "isize" => Ok(quote! { isize, }),
         "boolean" => Ok(quote! { bool, }),
+        "Pubkey" => Ok(quote! { Pubkey, }),
         "Uint8Array" => Ok(quote! { Vec<u8>, }),
         // "Signer" => Ok(quote!{Signer}),
         _ => Err(PoseidonError::InvalidType(str.to_string()))?,
