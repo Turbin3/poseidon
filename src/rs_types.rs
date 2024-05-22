@@ -746,7 +746,8 @@ impl ProgramInstruction {
                                 }
                                 
                                 if obj == "TokenProgram" {
-                                    if prop == "transfer" {
+                                    match prop {
+                                        "transfer" => {
                                         let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -787,248 +788,261 @@ impl ProgramInstruction {
                                                 })
                                             }
                                         }
-                                    } else if prop == "burn" {
-                                        let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let from_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let amount_expr = &c.args[3].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                        },
+                                        "burn" => {
+                                            let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let from_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let amount_expr = &c.args[3].expr;
+                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
 
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                Burn {
-                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                    from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            burn(cpi_ctx, #amount)?;
-                                        })
-                                    } else if prop == "mintTo" {
-                                        let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let amount_expr = &c.args[3].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new_with_signer(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                MintTo {
-                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                                signer,
-                                            );
-                                            mint_to(cpi_ctx, #amount)?;
-                                        })
-                                    } else if prop == "approve" {
-                                        let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let delegate_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let amount_expr = &c.args[3].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                Approve {
-                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                    delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            approve(cpi_ctx, #amount)?;
-                                        })
-                                    // not sure why decimals is in poseidon ts 
-                                    } else if prop == "approveChecked" {
-                                        let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let delegate_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[3].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake),
-                                        proc_macro2::Span::call_site());
-                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake),
-                                        proc_macro2::Span::call_site());
-                                        let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let amount_expr = &c.args[4].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                ApproveChecked {
-                                                    to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                    delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            approve_checked(cpi_ctx, #amount)?;
-                                        })
-                                    } else if prop == "closeAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let destination_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let destination_acc_ident = Ident::new(&destination_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                CloseAccount {
-                                                    account: ctx.accounts.#acc_ident.to_account_info(),
-                                                    destination: ctx.accounts.#destination_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            close_account(cpi_ctx)?;
-                                        })
-                                    } else if prop == "freezeAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                FreezeAccount {
-                                                    account: ctx.accounts.#acc_ident.to_account_info(),
-                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            freeze_account(cpi_ctx)?;
-                                        })
-                                    } else if prop == "initializeAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                InitializeAccount3 {
-                                                    account: ctx.accounts.#acc_ident.to_account_info(),
-                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            initialize_account3(cpi_ctx)?;
-                                        })
-                                    } else if prop == "revoke" {
-                                        let source_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let source_acc_ident = Ident::new(&source_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                Revoke {
-                                                    source: ctx.accounts.#source_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            revoke(cpi_ctx)?;
-                                        })
-                                    } else if prop == "syncNative" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                SyncNative {
-                                                    account: ctx.accounts.#acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            sync_native(cpi_ctx)?;
-                                        })
-                                    } else if prop == "thawAccount" {
-                                        let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-
-                                        ix_body.push(quote!{
-                                            let cpi_ctx = CpiContext::new(
-                                                ctx.accounts.token_program.to_account_info(),
-                                                ThawAccount {
-                                                    account: ctx.accounts.#acc_ident.to_account_info(),
-                                                    mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                    authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                },
-                                            );
-
-                                            thaw_account(cpi_ctx)?;
-                                        })
-                                    } else if prop == "transferChecked" {
-                                        let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let to_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let auth_acc = c.args[3].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                        let amount_expr = &c.args[4].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
-                                        if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
-                                            if cur_ix_acc.seeds.is_some() {
-                                                // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
-                                                // if let Some(auth_acc) = ix_accounts.get(&auth) {
-                                                //     let seeds = &auth_acc.seeds;
-                                                // }
-                                                ix_body.push(quote!{
-                                                    let cpi_accounts = TransferChecked {
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    Burn {
+                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                burn(cpi_ctx, #amount)?;
+                                            })
+                                        },
+                                        "mintTo" => {
+                                            let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let amount_expr = &c.args[3].expr;
+                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new_with_signer(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    MintTo {
                                                         mint: ctx.accounts.#mint_acc_ident.to_account_info(),
                                                         to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    };
-                                                    let signer_seeds = &[
-                                                        &b"auth"[..],
-                                                        &[ctx.accounts.escrow.auth_bump],
-                                                    ];
-                                                    let binding = [&signer_seeds[..]];
-                                                    let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                                    transfer_checked(ctx, #amount)?;
-                                                });
-                                            } else {
-                                                ix_body.push(quote!{
-                                                    let cpi_accounts = TransferChecked {
-                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                    },
+                                                    signer,
+                                                );
+                                                mint_to(cpi_ctx, #amount)?;
+                                            })
+                                        },
+                                        "approve" => {
+                                            let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let delegate_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let amount_expr = &c.args[3].expr;
+                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    Approve {
                                                         to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                        delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    };
-                                                    let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                    transfer_checked(ctx, #amount)?;
-                                                })
+                                                    },
+                                                );
+
+                                                approve(cpi_ctx, #amount)?;
+                                            })
+                                        // not sure why decimals is in poseidon ts 
+                                        },
+                                        "approveChecked" => {
+                                            let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let delegate_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[3].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake),
+                                            proc_macro2::Span::call_site());
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake),
+                                            proc_macro2::Span::call_site());
+                                            let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let amount_expr = &c.args[4].expr;
+                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    ApproveChecked {
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                        delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                approve_checked(cpi_ctx, #amount)?;
+                                            })
+                                        },
+                                        "closeAccount" => {
+                                            let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let destination_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let destination_acc_ident = Ident::new(&destination_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    CloseAccount {
+                                                        account: ctx.accounts.#acc_ident.to_account_info(),
+                                                        destination: ctx.accounts.#destination_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                close_account(cpi_ctx)?;
+                                            })
+                                        },
+                                        "freezeAccount" => {
+                                            let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    FreezeAccount {
+                                                        account: ctx.accounts.#acc_ident.to_account_info(),
+                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                freeze_account(cpi_ctx)?;
+                                            })
+                                        },
+                                        "initializeAccount" => {
+                                            let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    InitializeAccount3 {
+                                                        account: ctx.accounts.#acc_ident.to_account_info(),
+                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                initialize_account3(cpi_ctx)?;
+                                            })
+                                        },
+                                        "revoke" => {
+                                            let source_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let source_acc_ident = Ident::new(&source_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    Revoke {
+                                                        source: ctx.accounts.#source_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                revoke(cpi_ctx)?;
+                                            })
+                                        },
+                                        "syncNative" => {
+                                            let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    SyncNative {
+                                                        account: ctx.accounts.#acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                sync_native(cpi_ctx)?;
+                                            })
+                                        },
+                                        "thawAccount" => {
+                                            let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+
+                                            ix_body.push(quote!{
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.token_program.to_account_info(),
+                                                    ThawAccount {
+                                                        account: ctx.accounts.#acc_ident.to_account_info(),
+                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                    },
+                                                );
+
+                                                thaw_account(cpi_ctx)?;
+                                            })
+                                        },
+                                        "transferChecked" => {
+                                            let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let to_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let auth_acc = c.args[3].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let amount_expr = &c.args[4].expr;
+                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
+                                                    // if let Some(auth_acc) = ix_accounts.get(&auth) {
+                                                    //     let seeds = &auth_acc.seeds;
+                                                    // }
+                                                    ix_body.push(quote!{
+                                                        let cpi_accounts = TransferChecked {
+                                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                            mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                            to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                            authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                        };
+                                                        let signer_seeds = &[
+                                                            &b"auth"[..],
+                                                            &[ctx.accounts.escrow.auth_bump],
+                                                        ];
+                                                        let binding = [&signer_seeds[..]];
+                                                        let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+                                                        transfer_checked(ctx, #amount)?;
+                                                    });
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_accounts = TransferChecked {
+                                                            from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                            mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                            to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                            authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                        };
+                                                        let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                        transfer_checked(ctx, #amount)?;
+                                                    })
+                                                }
                                             }
-                                        }
+                                        },
+                                        _ => {}
                                     }
                                 }
                             }
