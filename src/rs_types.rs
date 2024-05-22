@@ -672,6 +672,7 @@ impl ProgramInstruction {
                                                     has_one.push(elem.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.to_string());
                                             }
                                             cur_ix_acc.has_one = has_one;
+                                            
                                         }
                                     }
                                 }
@@ -684,19 +685,47 @@ impl ProgramInstruction {
                                         let to_acc_ident = Ident::new(to_acc, proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[2].expr;
                                         let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
-                                        ix_body.push(quote!{
-                                            let transfer_accounts = Transfer {
-                                                from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                                to: ctx.accounts.#to_acc_ident.to_account_info()
-                                            };
-                                            let transfer_ctx = CpiContext::new(
-                                                ctx.accounts.system_program.to_account_info(),
-                                                transfer_accounts
-                                            );
-                                            transfer(transfer_ctx, #amount)?;
-                                        });
+                                        if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
+                                            if cur_ix_acc.seeds.is_some(){
+                                                ix_body.push(quote!{
+                                                    let transfer_accounts = Transfer {
+                                                        from: ctx.accounts.vault.to_account_info(),
+                                                        to: ctx.accounts.signer.to_account_info()
+                                                    };
+                                            
+                                                    let seeds = &[
+                                                        b"vault",
+                                                        ctx.accounts.state.to_account_info().key.as_ref(),
+                                                        &[ctx.accounts.state.vault_bump],
+                                                    ];
+                                            
+                                                    let pda_signer = &[&seeds[..]];
+                                            
+                                                    let transfer_ctx = CpiContext::new_with_signer(
+                                                        ctx.accounts.system_program.to_account_info(),
+                                                        transfer_accounts,
+                                                        pda_signer
+                                                    );
+                                                    transfer(transfer_ctx, amount)?;
+                                                });
+                                            } else {
+                                                ix_body.push(quote!{
+                                                    let transfer_accounts = Transfer {
+                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info()
+                                                    };
+                                                    let transfer_ctx = CpiContext::new(
+                                                        ctx.accounts.system_program.to_account_info(),
+                                                        transfer_accounts
+                                                    );
+                                                    transfer(transfer_ctx, #amount)?;
+                                                });
+                                            }
+                                        }
+                                        
                                     }
                                 }
+                                
                                 if obj == "TokenProgram" {
                                     if prop == "transfer" {
                                         let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -708,7 +737,7 @@ impl ProgramInstruction {
                                         let amount_expr = &c.args[3].expr;
                                         let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
-                                            if cur_ix_acc.type_str == "TokenAccount" {
+                                            if cur_ix_acc.seeds.is_some() {
                                                 // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
                                                 // if let Some(auth_acc) = ix_accounts.get(&auth) {
                                                 //     let seeds = &auth_acc.seeds;
@@ -727,7 +756,7 @@ impl ProgramInstruction {
                                                     let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
                                                     transfer(ctx, #amount)?;
                                                 });
-                                            } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
+                                            } else {
                                                 ix_body.push(quote!{
                                                     let cpi_accounts = Transfer {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
@@ -948,7 +977,7 @@ impl ProgramInstruction {
                                         let amount_expr = &c.args[4].expr;
                                         let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
-                                            if cur_ix_acc.type_str == "TokenAccount" {
+                                            if cur_ix_acc.seeds.is_some() {
                                                 // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
                                                 // if let Some(auth_acc) = ix_accounts.get(&auth) {
                                                 //     let seeds = &auth_acc.seeds;
@@ -968,7 +997,7 @@ impl ProgramInstruction {
                                                     let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
                                                     transfer_checked(ctx, #amount)?;
                                                 });
-                                            } else if cur_ix_acc.type_str == "AssociatedTokenAccount" {
+                                            } else {
                                                 ix_body.push(quote!{
                                                     let cpi_accounts = TransferChecked {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),

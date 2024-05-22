@@ -53,7 +53,7 @@ export default class VaultProgram {
             vault,
             owner,
             amount,
-            ['auth', state.key, state.authBump]
+            ['vault', state.key, state.authBump]
         )
     }
 }
