@@ -653,7 +653,7 @@ impl ProgramInstruction {
                                             }
                                         }
                                         if prop == "deriveWithBump" {
-                                            let bump_members = c.args[1].expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
+                                            let bump_members = c.args.last().ok_or(anyhow!("no last element in vector"))?.expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
                                             let bump_prop  = Ident::new(
                                                 bump_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref(),
                                                 Span::call_site(),
@@ -1155,9 +1155,9 @@ impl ProgramInstruction {
                                                     // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
 
                                                     if right_prop == "getBump" {
-                                                        let right_obj_literal = Literal::string(&right_obj);
+                                                        let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                                         ix_body.push(quote!{
-                                                            ctx.#left_obj_ident.#left_prop_ident = *ctx.bumps.get(#right_obj_literal).unwrap();
+                                                            ctx.#left_obj_ident.#left_prop_ident = ctx.bumps.#right_obj_ident;
                                                         })
                                                     }
                                                 }
