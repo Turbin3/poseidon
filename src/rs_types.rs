@@ -1,3 +1,4 @@
+
 use convert_case::{Case, Casing};
 use core::panic;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
@@ -13,6 +14,7 @@ use swc_ecma_ast::{
 };
 use swc_ecma_parser::token::Token;
 
+
 use crate::{
     errors::PoseidonError,
     ts_types::{rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_TYPES},
@@ -24,7 +26,8 @@ pub struct Ata {
     mint: String,
     authority: String,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
+
 pub struct InstructionAccount {
     pub name: String,
     pub of_type: TokenStream,
@@ -190,13 +193,14 @@ impl InstructionAccount {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
+
 pub struct InstructionArgument {
     pub name: String,
     pub of_type: TokenStream,
     pub optional: bool,
 }
-
+#[derive(Clone, Debug)]
 pub struct ProgramInstruction {
     pub name: String,
     pub accounts: Vec<InstructionAccount>,
@@ -397,6 +401,7 @@ impl ProgramInstruction {
     }
 
     pub fn from_class_method(
+        program_mod: &mut ProgramModule,
         c: &ClassMethod,
         custom_accounts: &HashMap<String, ProgramAccount>,
     ) -> Result<Self> {
@@ -484,6 +489,10 @@ impl ProgramInstruction {
                     );
                     ix.uses_associated_token_program = true;
                     ix.uses_token_program = true;
+                    
+                    program_mod.add_import("anchor_spl", "associated_token", "AssociatedToken");
+                    
+
                 } else if of_type == "Mint" {
                     ix_accounts.insert(
                         name.clone(),
@@ -494,8 +503,7 @@ impl ProgramInstruction {
                             optional,
                         ),
                     );
-                    let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                    cur_ix_acc.is_mint = true;
+                    program_mod.add_import("anchor_spl", "token", "Mint");
                 } else if of_type == "TokenAccount" {
                     ix_accounts.insert(
                         name.clone(),
@@ -507,6 +515,8 @@ impl ProgramInstruction {
                         ),
                     );
                     ix.uses_token_program = true;
+                    program_mod.add_import("anchor_spl", "token", "TokenAccount");
+                    program_mod.add_import("anchor_spl", "token", "Token");
                 }
             } else if custom_accounts.contains_key(&of_type) {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
@@ -698,6 +708,8 @@ impl ProgramInstruction {
                                 // need to implement signer seeds
                                 if obj == "SystemProgram" {
                                     if prop == "transfer" {
+                                        program_mod.add_import("anchor_lang", "system_program", "Transfer");
+                                        program_mod.add_import("anchor_lang", "system_program", "transfer");
                                         let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let from_acc_ident = Ident::new(from_acc, proc_macro2::Span::call_site());
@@ -748,6 +760,8 @@ impl ProgramInstruction {
                                 if obj == "TokenProgram" {
                                     match prop {
                                         "transfer" => {
+                                        program_mod.add_import("anchor_spl", "token", "transfer");
+                                        program_mod.add_import("anchor_spl", "token", "Transfer");
                                         let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -763,7 +777,7 @@ impl ProgramInstruction {
                                                 //     let seeds = &auth_acc.seeds;
                                                 // }
                                                 ix_body.push(quote!{
-                                                    let cpi_accounts = Transfer {
+                                                    let cpi_accounts = TransferSPL {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
                                                         to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
@@ -774,17 +788,17 @@ impl ProgramInstruction {
                                                     ];
                                                     let binding = [&signer_seeds[..]];
                                                     let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                                    transfer(ctx, #amount)?;
+                                                    transfer_spl(ctx, #amount)?;
                                                 });
                                             } else {
                                                 ix_body.push(quote!{
-                                                    let cpi_accounts = Transfer {
+                                                    let cpi_accounts = TransferSPL {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
                                                         to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                     };
                                                     let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                    transfer(ctx, #amount)?;
+                                                    transfer_spl(ctx, #amount)?;
                                                 })
                                             }
                                         }
@@ -1385,15 +1399,29 @@ impl ProgramAccount {
     }
 }
 
-pub struct ProgramImport {}
+// pub struct SubMember {
+//     name: String,
+//     alias: String
+// }
+// pub struct Member {
+//     member_name: Option<String>,
+//     sub_members: Vec<SubMember>,
+// }
 
+// pub struct ProgramImport {
+//     pub src_pkg: String,
+//     pub members: Vec<Member>,
+// }
+type SubMember = HashMap<String, Option<String>>; // submember_name : alias
+type Member = HashMap<String, SubMember>; // member_name : submembers
+type ProgramImport = HashMap<String, Member>; // src_pkg : members
 pub struct ProgramModule {
     pub id: String,
     pub name: String,
     pub custom_types: HashMap<String, ProgramAccount>,
     pub instructions: Vec<ProgramInstruction>,
     pub accounts: Vec<ProgramAccount>,
-    pub imports: Vec<ProgramImport>,
+    pub imports: ProgramImport,
 }
 
 impl ProgramModule {
@@ -1404,7 +1432,33 @@ impl ProgramModule {
             custom_types: HashMap::new(),
             instructions: vec![],
             accounts: vec![],
-            imports: vec![],
+            imports: HashMap::new(),
+        }
+    }
+    pub fn add_import(&mut self, src_pkg: &str, member_name: &str, sub_member_name: &str) {
+        let mut alias:Option<String> = None;
+        if sub_member_name == "Transfer" && member_name == "token" {
+            alias = Some("TransferSPL".to_string());
+        }
+        if sub_member_name == "transfer" && member_name == "token" {
+            alias = Some("transfer_spl".to_string());
+        }
+        if let Some(members) = self.imports.get_mut(src_pkg) {
+            if !members.contains_key(member_name) {
+                members.insert(member_name.to_string(), SubMember::from([
+                    (sub_member_name.to_string(), alias)
+                ]));
+            } else if let Some(submembers) = members.get_mut(member_name){
+                if !submembers.contains_key(sub_member_name) {
+                    submembers.insert(sub_member_name.to_string(), alias);
+                }
+            }
+        }else {
+            self.imports.insert(src_pkg.to_string(), Member::from([
+                (member_name.to_string(),SubMember::from([
+                    (sub_member_name.to_string(), alias)
+                ]))
+            ]));
         }
     }
 
@@ -1459,7 +1513,7 @@ impl ProgramModule {
                     None => match c.as_method() {
                         Some(c) => {
                             // Handle as a class method
-                            let ix = ProgramInstruction::from_class_method(c, custom_accounts)
+                            let ix = ProgramInstruction::from_class_method(self, c, custom_accounts)
                                 .map_err(|e| anyhow!(e.to_string()))?;
                             self.instructions.push(ix);
                         }
@@ -1472,7 +1526,7 @@ impl ProgramModule {
         Ok(())
     }
 
-    pub fn to_tokens(&self) -> TokenStream {
+    pub fn to_tokens(&self) -> Result<TokenStream> {
         let program_name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let program_id = Literal::string(&self.id);
         let serialized_instructions: Vec<TokenStream> =
@@ -1482,12 +1536,60 @@ impl ProgramModule {
             .iter()
             .map(|x| x.accounts_to_tokens())
             .collect();
+
+        // println!("{:#?}", self.imports);
+        let imports: TokenStream = match !self.imports.is_empty() {
+            true => {
+                let mut imports_vec: Vec<TokenStream> = vec![];
+                for (src_pkg, members) in self.imports.iter(){
+                    let src_pkg_ident = Ident::new(
+                        src_pkg,
+                        proc_macro2::Span::call_site(),
+                    );
+
+                    let mut member_tokens : Vec<TokenStream> = vec![];
+                    for (member_name, sub_members) in members.iter() {
+                        let member_name_ident = Ident::new(
+                            member_name,
+                            proc_macro2::Span::call_site(),
+                        );
+                        let mut sub_member_tokens : Vec<TokenStream> = vec![];
+                        for (sub_member_name, alias) in sub_members {
+                            
+                            let sub_member_name_ident = Ident::new(
+                                sub_member_name,
+                                proc_macro2::Span::call_site(),
+                            );
+                            if alias.is_none(){
+                                sub_member_tokens.push(quote!{#sub_member_name_ident});
+                            } else {
+                                let alias_str = alias.to_owned().ok_or(anyhow!("invalid alias in import"))?;
+                                let alias_ident = Ident::new(
+                                    &alias_str,
+                                    proc_macro2::Span::call_site(),
+                                );
+                                sub_member_tokens.push(quote!{#sub_member_name_ident as #alias_ident});
+                            }
+
+                        }
+
+                        member_tokens.push(quote!(#member_name_ident :: {#(#sub_member_tokens),*}))
+                    }
+                    imports_vec.push(quote!{use #src_pkg_ident :: {#(#member_tokens),*};});
+                }
+                
+                quote!{#(#imports_vec),*}
+            },
+            false => {
+                quote!()
+            }
+        };
         // let  = self.instructions.iter().map(|x| x.accounts_to_tokens() ).collect();
         let serialized_accounts: Vec<TokenStream> =
             self.accounts.iter().map(|x| x.to_tokens()).collect();
-        quote! {
+        let program = quote! {
             use anchor_lang::prelude::*;
-
+            #imports
             declare_id!(#program_id);
 
             #[program]
@@ -1499,6 +1601,7 @@ impl ProgramModule {
             #(#serialized_account_structs)*
 
             #(#serialized_accounts)*
-        }
+        };
+        Ok(program)
     }
 }

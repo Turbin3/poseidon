@@ -61,7 +61,7 @@ pub fn transpile(module: &Module) -> Result<()> {
     let serialized_program = program.to_tokens();
     fs::write(
         "escrow.rs",
-        PrettyPlease::default().format_str(serialized_program.to_string())?,
+        PrettyPlease::default().format_str(serialized_program?.to_string())?,
     )?;
     Ok(())
 }
