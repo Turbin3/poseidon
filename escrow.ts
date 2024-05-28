@@ -66,7 +66,7 @@ export default class EscrowProgram {
             makerAta,
             auth,
             escrow.amount,
-            ["vault", escrow.key]
+            seeds
         )
     }
 
