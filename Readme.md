@@ -26,3 +26,10 @@ Build poseidon:
 cargo build --release
 ```
 
+This will create a binary named valid8 in the target/release directory. You can copy the binary to a location in your PATH for easier access.
+
+## Usage
+
+```sh
+poseidon --input "input.ts" --output "output.rs"
+```

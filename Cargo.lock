@@ -1332,7 +1332,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poseidon2"
+name = "poseidon"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
