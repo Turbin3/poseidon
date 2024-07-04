@@ -19,8 +19,11 @@ export default class EscrowProgram {
 
         auth.derive(["auth"])
 
+        // Here like we mentioned in counter we are deriving a PDA for TokenAccount
+        // <TokenAccount>.derive([...], <mint of the token acc>, <authority of the token acc>)
         vault.derive(["vault", escrow.key], makerMint, auth.key).init()
 
+        // here we can see that we are deriving using seed(u64), so we would do change it to bytes by <arg>.toBytes() which makes it consumable for derive
         escrow.derive(["escrow", maker.key, seed.toBytes()])
             .init()
 
@@ -35,10 +38,10 @@ export default class EscrowProgram {
         escrow.takerMint = takerMint.key;
 
         TokenProgram.transfer(
-            makerAta,
-            vault,
-            maker,
-            depositAmount,
+            makerAta,      // from
+            vault,         // to
+            maker,         // authority
+            depositAmount, // amount to transfered
         )
     }
 
@@ -59,14 +62,13 @@ export default class EscrowProgram {
 
         vault.derive(["vault", escrow.key], makerMint, auth.key)
 
-        let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
-
+        // similar to system program transfer, we are using seeds as the last arguement as we are tranfering from a PDA
         TokenProgram.transfer(
             vault,
             makerAta,
             auth,
             escrow.amount,
-            seeds
+            ["auth", escrow.authBump.toBytes()]
         )
     }
 
@@ -81,10 +83,12 @@ export default class EscrowProgram {
         auth: UncheckedAccount,
         vault: TokenAccount,
         escrow: EscrowState
-    ) {        
+    ) { 
+        // for AssociatedTokenAccount(takerAta) since its associated with a pubkey there is no need to pass the seeds list. we can just pass the mint and authority     
+        // <AssociatedTokenAccount>.derive(<mint of the token acc>, <authority of the token acc>) 
         takerAta
             .derive(makerMint, taker.key)
-            .initIfNeeded();
+            .initIfNeeded(); // if you're not sure that the Ata will exist, just chain initIfNeeded method instead of init
 
         takerReceiveAta
             .derive(makerMint, taker.key)
@@ -93,7 +97,7 @@ export default class EscrowProgram {
         makerAta.derive(makerMint, maker.key)
 
         escrow.derive(["escrow", maker.key, escrow.seed.toBytes()])
-            .has([ maker, makerMint, takerMint ])
+            .has([ maker, makerMint, takerMint ]) // has method makes sure that all the pubkeys in the list which is the Custom_Acc(escrow) holds is same as Acc's pubkey in the function(in this case `take`) arguements
             .close(maker)
 
         auth.derive(["auth"])

@@ -14,7 +14,10 @@ export default class VaultProgram {
         state.derive(['state', owner.key]).init()
         vault.derive(['vault', auth.key])
 
+        // assigning a arguement of type Pubkey to the custom_Acc(state) by calling the key property
         state.owner = owner.key;
+
+        // to store bumps in the custom_Acc(state), we can simply call getBump on the custom_Acc(state)
         state.stateBump = state.getBump()
         state.authBump = auth.getBump()
         state.vaultBump = vault.getBump()
@@ -27,14 +30,16 @@ export default class VaultProgram {
         vault: SystemAccount,
         amount: u64
     ) {
+        // if we have stored bump in the custom_Acc(state), we can derive PDAs with stored bumps by passing that as the 2nd arguement
         state.deriveWithBump(['state', owner.key], state.stateBump)
         auth.deriveWithBump(['auth', state.key], state.authBump)
         vault.deriveWithBump(['vault', auth.key], state.vaultBump)
 
+        // we support a number for functions from SystemProgram and TokenProgram
         SystemProgram.transfer(
-            owner,
-            vault,
-            amount
+            owner, // from
+            vault, // to
+            amount // amount to be sent
         )
     }
 
@@ -49,6 +54,7 @@ export default class VaultProgram {
         auth.deriveWithBump(['auth', state.key], state.authBump)
         vault.deriveWithBump(['vault', auth.key], state.vaultBump)
 
+        // since here we are transfering from a PDA we have give seeds of the PDA as the last arguement
         SystemProgram.transfer(
             vault,
             owner,

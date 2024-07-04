@@ -33,3 +33,5 @@ This will create a binary named poseidon in the target/release directory. You ca
 ```sh
 poseidon --input "input.ts" --output "output.rs"
 ```
+
+Check out examples in the repo to learn how to write Poseidon Typescript which can be transpiled to anchor programs. There are vote, vault and escrow(.ts files and their tranpiled .rs files)
