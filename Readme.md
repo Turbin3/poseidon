@@ -26,7 +26,7 @@ Build poseidon:
 cargo build --release
 ```
 
-This will create a binary named valid8 in the target/release directory. You can copy the binary to a location in your PATH for easier access.
+This will create a binary named poseidon in the target/release directory. You can copy the binary to a location in your PATH for easier access.
 
 ## Usage
 
