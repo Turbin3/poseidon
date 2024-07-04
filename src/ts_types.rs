@@ -19,7 +19,7 @@ pub const STANDARD_TYPES: [&str; 17] = [
     "Uint8Array",
     "string",
     "String",
-    "Pubkey"
+    "Pubkey",
 ];
 
 pub const STANDARD_ACCOUNT_TYPES: [&str; 7] = [

@@ -1,4 +1,3 @@
-
 use convert_case::{Case, Casing};
 use core::panic;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
@@ -13,7 +12,6 @@ use swc_ecma_ast::{
     NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl,
 };
 use swc_ecma_parser::token::Token;
-
 
 use crate::{
     errors::PoseidonError,
@@ -73,7 +71,6 @@ impl InstructionAccount {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let of_type = &self.of_type;
         let constraints: TokenStream;
-        // print!("{:#?}", payer);
         let payer = match &self.payer {
             Some(s) => {
                 let payer = Ident::new(s, proc_macro2::Span::call_site());
@@ -108,14 +105,12 @@ impl InstructionAccount {
 
         let seeds = match &self.seeds {
             Some(s) => {
-                // println!("{:#?}", s);
                 quote! {
                     seeds = [#(#s),*],
                 }
             }
             None => quote! {},
         };
-        // println!("{:#?} : {:#?}", self.name, seeds);
 
         let bump = match &self.bump {
             Some(b) => {
@@ -135,7 +130,6 @@ impl InstructionAccount {
             }
         };
 
-        // need to also declare payer in case of init
         let init = match self.is_init {
             true => quote! {init, #payer, #space},
             false => {
@@ -180,7 +174,7 @@ impl InstructionAccount {
         }
         let check = if self.type_str == "UncheckedAccount" {
             quote! {
-                /// CHECK: ignore
+                /// CHECK: This acc is safe
             }
         } else {
             quote! {}
@@ -229,7 +223,6 @@ impl ProgramInstruction {
     }
     pub fn get_amount_from_ts_arg(amount_expr: &Expr) -> Result<TokenStream> {
         let amount: TokenStream;
-        // let mut amount_prop : Option<String> = None;
         match amount_expr {
             Expr::Member(m) => {
                 let amount_obj = m
@@ -320,15 +313,12 @@ impl ProgramInstruction {
                         .ok_or(PoseidonError::MemberNotFound)?;
                     if seed_members.obj.is_ident() {
                         let seed_obj = seed_members
-                        .obj
-                        .as_ident()
-                        .ok_or(PoseidonError::IdentNotFound)?
-                        .sym
-                        .as_ref();
-                        let seed_obj_ident = Ident::new(
-                            seed_obj,
-                            Span::call_site(),
-                        );
+                            .obj
+                            .as_ident()
+                            .ok_or(PoseidonError::IdentNotFound)?
+                            .sym
+                            .as_ref();
+                        let seed_obj_ident = Ident::new(seed_obj, Span::call_site());
                         if seed_members
                             .prop
                             .as_ident()
@@ -345,14 +335,12 @@ impl ProgramInstruction {
                         for arg in self.args.iter() {
                             if arg.name == seed_obj {
                                 let type_ident = &arg.of_type;
-                                
 
                                 ix_attribute_token.push(quote! {
                                     #seed_obj_ident : #type_ident
                                 })
                             }
                         }
-
                     } else if seed_members.obj.is_member() {
                         if seed_members
                             .prop
@@ -394,7 +382,7 @@ impl ProgramInstruction {
                 _ => {}
             }
         }
-        if !ix_attribute_token.is_empty(){
+        if !ix_attribute_token.is_empty() {
             self.instruction_attributes = Some(ix_attribute_token);
         }
         Ok(seeds_token)
@@ -489,10 +477,8 @@ impl ProgramInstruction {
                     );
                     ix.uses_associated_token_program = true;
                     ix.uses_token_program = true;
-                    
-                    program_mod.add_import("anchor_spl", "associated_token", "AssociatedToken");
-                    
 
+                    program_mod.add_import("anchor_spl", "associated_token", "AssociatedToken");
                 } else if of_type == "Mint" {
                     ix_accounts.insert(
                         name.clone(),
@@ -543,7 +529,6 @@ impl ProgramInstruction {
         });
         ix.args = ix_arguments;
 
-
         let _ = c.clone()
             .function
             .body
@@ -590,13 +575,11 @@ impl ProgramInstruction {
                                     obj = parent_call.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                     prop = parent_call.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                     if prop.contains("derive") {
-                                        // if(ix_accounts.get(&obj))
                                         derive_args = &c.args;
                                     }
                                 }
                                 if let Some(cur_ix_acc) = ix_accounts.get_mut(obj) {
                                     if prop.contains("derive") {
-                                        // println!("{:#?}", cur_ix_acc.type_str);
                                         let chaincall1prop = c
                                             .callee
                                             .as_expr()
@@ -659,7 +642,6 @@ impl ProgramInstruction {
                                             });
                                             if !seeds_token.is_empty() {
                                                 cur_ix_acc.seeds = Some(seeds_token);
-                                                // println!("{:#?} : \n {:#?}", cur_ix_acc.name, cur_ix_acc.seeds);
                                             }
                                         }
                                         if prop == "deriveWithBump" {
@@ -676,7 +658,7 @@ impl ProgramInstruction {
                                                 bump = #bump_obj.#bump_prop
                                             })
                                         }
-                                        // println!("{:#?} : \n {:#?}", obj, seeds_token);
+
                                         if chaincall1prop == "init" {
                                             ix.uses_system_program = true;
                                             cur_ix_acc.is_init = true;
@@ -701,11 +683,10 @@ impl ProgramInstruction {
                                                     has_one.push(elem.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.to_string());
                                             }
                                             cur_ix_acc.has_one = has_one;
-                                            
+
                                         }
                                     }
                                 }
-                                // need to implement signer seeds
                                 if obj == "SystemProgram" {
                                     if prop == "transfer" {
                                         program_mod.add_import("anchor_lang", "system_program", "Transfer");
@@ -723,15 +704,15 @@ impl ProgramInstruction {
                                                         from: ctx.accounts.vault.to_account_info(),
                                                         to: ctx.accounts.signer.to_account_info()
                                                     };
-                                            
+
                                                     let seeds = &[
                                                         b"vault",
                                                         ctx.accounts.state.to_account_info().key.as_ref(),
                                                         &[ctx.accounts.state.vault_bump],
                                                     ];
-                                            
+
                                                     let pda_signer = &[&seeds[..]];
-                                            
+
                                                     let transfer_ctx = CpiContext::new_with_signer(
                                                         ctx.accounts.system_program.to_account_info(),
                                                         transfer_accounts,
@@ -753,10 +734,10 @@ impl ProgramInstruction {
                                                 });
                                             }
                                         }
-                                        
+
                                     }
                                 }
-                                
+
                                 if obj == "TokenProgram" {
                                     match prop {
                                         "transfer" => {
@@ -772,10 +753,6 @@ impl ProgramInstruction {
                                         let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some() {
-                                                // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
-                                                // if let Some(auth_acc) = ix_accounts.get(&auth) {
-                                                //     let seeds = &auth_acc.seeds;
-                                                // }
                                                 ix_body.push(quote!{
                                                     let cpi_accounts = TransferSPL {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
@@ -869,7 +846,6 @@ impl ProgramInstruction {
 
                                                 approve(cpi_ctx, #amount)?;
                                             })
-                                        // not sure why decimals is in poseidon ts 
                                         },
                                         "approveChecked" => {
                                             let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -1023,10 +999,6 @@ impl ProgramInstruction {
                                             let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    // let auth = cur_ix_acc.ata.clone().expect("no ata found").authority;
-                                                    // if let Some(auth_acc) = ix_accounts.get(&auth) {
-                                                    //     let seeds = &auth_acc.seeds;
-                                                    // }
                                                     ix_body.push(quote!{
                                                         let cpi_accounts = TransferChecked {
                                                             from: ctx.accounts.#from_acc_ident.to_account_info(),
@@ -1165,9 +1137,6 @@ impl ProgramInstruction {
                                                 Expr::Ident(right_obj) => {
                                                     let right_obj = right_obj.sym.as_ref();
                                                     let right_prop = memebers.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                                    // let right_obj_ident = Ident::new(&right_obj, proc_macro2::Span::call_site());
-                                                    // let right_prop_ident = Ident::new(&right_prop, proc_macro2::Span::call_site());
-
                                                     if right_prop == "getBump" {
                                                         let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                                         ix_body.push(quote!{
@@ -1213,15 +1182,11 @@ impl ProgramInstruction {
                 Ok(())
             }).collect::<Result<Vec<()>>>()?;
 
-        // fs::write("ast1.rs", format!("{:#?}", statements)).unwrap();
         ix.accounts = ix_accounts.into_values().collect();
         ix.body = ix_body;
-        // println!("{:#?} : {:#?}",ix.name, ix.accounts);
+
         Ok(ix)
     }
-
-    // 2 instructions cant have same context
-    // fn block yet to be done
 
     pub fn to_tokens(&self) -> TokenStream {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
@@ -1240,7 +1205,6 @@ impl ProgramInstruction {
             .collect();
         let body = self.body.clone();
         let stmts = quote! {#(#body)*};
-        // println!("{:#?}", stmts);
         quote! {
             pub fn #name (ctx: Context<#ctx_name>, #(#args)*) -> Result<()> {
                 #stmts
@@ -1259,10 +1223,7 @@ impl ProgramInstruction {
 
         let ix_attributes = match &self.instruction_attributes {
             Some(s) => {
-                // println!("{:#?}", s);
                 quote! {
-                    // # [instruction()],
-                    // [#(#s),*]
                     #[instruction(#(#s),*)]
                 }
             }
@@ -1308,8 +1269,6 @@ pub struct ProgramAccount {
 
 impl ProgramAccount {
     pub fn from_ts_expr(interface: TsInterfaceDecl) -> Self {
-        // Ensure custom account extends the Account type
-        // TODO: Allow multiple "extends"
         match interface.extends.first() {
             Some(TsExprWithTypeArgs { expr, .. })
                 if expr.clone().ident().is_some()
@@ -1318,8 +1277,6 @@ impl ProgramAccount {
         }
         let name: String = interface.id.sym.to_string();
         let mut space: u16 = 0;
-        // println!("{}", &name);
-        // TODO: Process fields of account
         let fields: Vec<ProgramAccountField> = interface
             .body
             .body
@@ -1370,10 +1327,8 @@ impl ProgramAccount {
     }
 
     pub fn to_tokens(&self) -> TokenStream {
-        // Parse struct name
         let struct_name = Ident::new(&self.name, proc_macro2::Span::call_site());
 
-        // Parse fields
         let fields: Vec<_> = self
             .fields
             .iter()
@@ -1399,19 +1354,6 @@ impl ProgramAccount {
     }
 }
 
-// pub struct SubMember {
-//     name: String,
-//     alias: String
-// }
-// pub struct Member {
-//     member_name: Option<String>,
-//     sub_members: Vec<SubMember>,
-// }
-
-// pub struct ProgramImport {
-//     pub src_pkg: String,
-//     pub members: Vec<Member>,
-// }
 type SubMember = HashMap<String, Option<String>>; // submember_name : alias
 type Member = HashMap<String, SubMember>; // member_name : submembers
 type ProgramImport = HashMap<String, Member>; // src_pkg : members
@@ -1436,7 +1378,7 @@ impl ProgramModule {
         }
     }
     pub fn add_import(&mut self, src_pkg: &str, member_name: &str, sub_member_name: &str) {
-        let mut alias:Option<String> = None;
+        let mut alias: Option<String> = None;
         if sub_member_name == "Transfer" && member_name == "token" {
             alias = Some("TransferSPL".to_string());
         }
@@ -1445,24 +1387,25 @@ impl ProgramModule {
         }
         if let Some(members) = self.imports.get_mut(src_pkg) {
             if !members.contains_key(member_name) {
-                members.insert(member_name.to_string(), SubMember::from([
-                    (sub_member_name.to_string(), alias)
-                ]));
-            } else if let Some(submembers) = members.get_mut(member_name){
+                members.insert(
+                    member_name.to_string(),
+                    SubMember::from([(sub_member_name.to_string(), alias)]),
+                );
+            } else if let Some(submembers) = members.get_mut(member_name) {
                 if !submembers.contains_key(sub_member_name) {
                     submembers.insert(sub_member_name.to_string(), alias);
                 }
             }
-        }else {
-            self.imports.insert(src_pkg.to_string(), Member::from([
-                (member_name.to_string(),SubMember::from([
-                    (sub_member_name.to_string(), alias)
-                ]))
-            ]));
+        } else {
+            self.imports.insert(
+                src_pkg.to_string(),
+                Member::from([(
+                    member_name.to_string(),
+                    SubMember::from([(sub_member_name.to_string(), alias)]),
+                )]),
+            );
         }
     }
-
-    // pub fn populate_from_class_expr(&mut self, class: &ClassExpr, account_store: &HashSet<String, ProgramAccount>) {
 
     pub fn populate_from_class_expr(
         &mut self,
@@ -1506,15 +1449,14 @@ impl ProgramModule {
                                 _ => panic!("Invalid program ID"),
                             };
                         } else {
-                            // TODO: Allow multiple static declarations that aren't just a program ID
                             panic!("Invalid declaration")
                         }
                     }
                     None => match c.as_method() {
                         Some(c) => {
-                            // Handle as a class method
-                            let ix = ProgramInstruction::from_class_method(self, c, custom_accounts)
-                                .map_err(|e| anyhow!(e.to_string()))?;
+                            let ix =
+                                ProgramInstruction::from_class_method(self, c, custom_accounts)
+                                    .map_err(|e| anyhow!(e.to_string()))?;
                             self.instructions.push(ix);
                         }
                         None => panic!("Invalid class property or member"),
@@ -1537,54 +1479,43 @@ impl ProgramModule {
             .map(|x| x.accounts_to_tokens())
             .collect();
 
-        // println!("{:#?}", self.imports);
         let imports: TokenStream = match !self.imports.is_empty() {
             true => {
                 let mut imports_vec: Vec<TokenStream> = vec![];
-                for (src_pkg, members) in self.imports.iter(){
-                    let src_pkg_ident = Ident::new(
-                        src_pkg,
-                        proc_macro2::Span::call_site(),
-                    );
+                for (src_pkg, members) in self.imports.iter() {
+                    let src_pkg_ident = Ident::new(src_pkg, proc_macro2::Span::call_site());
 
-                    let mut member_tokens : Vec<TokenStream> = vec![];
+                    let mut member_tokens: Vec<TokenStream> = vec![];
                     for (member_name, sub_members) in members.iter() {
-                        let member_name_ident = Ident::new(
-                            member_name,
-                            proc_macro2::Span::call_site(),
-                        );
-                        let mut sub_member_tokens : Vec<TokenStream> = vec![];
+                        let member_name_ident =
+                            Ident::new(member_name, proc_macro2::Span::call_site());
+                        let mut sub_member_tokens: Vec<TokenStream> = vec![];
                         for (sub_member_name, alias) in sub_members {
-                            
-                            let sub_member_name_ident = Ident::new(
-                                sub_member_name,
-                                proc_macro2::Span::call_site(),
-                            );
-                            if alias.is_none(){
-                                sub_member_tokens.push(quote!{#sub_member_name_ident});
+                            let sub_member_name_ident =
+                                Ident::new(sub_member_name, proc_macro2::Span::call_site());
+                            if alias.is_none() {
+                                sub_member_tokens.push(quote! {#sub_member_name_ident});
                             } else {
-                                let alias_str = alias.to_owned().ok_or(anyhow!("invalid alias in import"))?;
-                                let alias_ident = Ident::new(
-                                    &alias_str,
-                                    proc_macro2::Span::call_site(),
-                                );
-                                sub_member_tokens.push(quote!{#sub_member_name_ident as #alias_ident});
+                                let alias_str =
+                                    alias.to_owned().ok_or(anyhow!("invalid alias in import"))?;
+                                let alias_ident =
+                                    Ident::new(&alias_str, proc_macro2::Span::call_site());
+                                sub_member_tokens
+                                    .push(quote! {#sub_member_name_ident as #alias_ident});
                             }
-
                         }
 
                         member_tokens.push(quote!(#member_name_ident :: {#(#sub_member_tokens),*}))
                     }
-                    imports_vec.push(quote!{use #src_pkg_ident :: {#(#member_tokens),*};});
+                    imports_vec.push(quote! {use #src_pkg_ident :: {#(#member_tokens),*};});
                 }
-                
-                quote!{#(#imports_vec),*}
-            },
+
+                quote! {#(#imports_vec),*}
+            }
             false => {
                 quote!()
             }
         };
-        // let  = self.instructions.iter().map(|x| x.accounts_to_tokens() ).collect();
         let serialized_accounts: Vec<TokenStream> =
             self.accounts.iter().map(|x| x.to_tokens()).collect();
         let program = quote! {

@@ -1,7 +1,35 @@
-Supported types:
-- Strings
-- Numeric types (u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize)
-- Booleans
-- Buffer
-- Uint8Array
-- SizedArray
+# Poseidon 
+Now you can write solana programs in Typescript
+
+poseidon is a transpiler that helps you to convert your Typescript solana programs to anchor. Which is especially convinient for people who are just getting started with solana.
+
+## Installation
+
+Make sure you have Rust and Cargo installed
+
+Clone the repository:
+
+```sh
+git clone https://github.com/3uild-3thos/poseidon
+```
+
+
+Navigate to the project directory:
+
+```sh
+cd poseidon
+```
+
+Build poseidon:
+
+```sh
+cargo build --release
+```
+
+This will create a binary named poseidon in the target/release directory. You can copy the binary to a location in your PATH for easier access.
+
+## Usage
+
+```sh
+poseidon --input "input.ts" --output "output.rs"
+```
