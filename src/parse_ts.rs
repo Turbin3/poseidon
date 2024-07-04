@@ -1,33 +1,28 @@
 use std::path::Path;
-mod ts_types;
-mod rs_types;
-mod transpiler;
-mod errors;
-
 use swc_common::{
     self,
-    errors::{
-        ColorConfig,
-        Handler
-    },
-    sync::Lrc, 
-    SourceMap
+    errors::{ColorConfig, Handler},
+    sync::Lrc,
+    SourceMap,
 };
-use swc_ecma_parser::{
-    lexer::Lexer, 
-    Capturing, 
-    Parser, 
-    StringInput, 
-    Syntax
-};
-use transpiler::transpile;
+use swc_ecma_ast::Module;
+use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 
-fn main() {
+pub fn parse_ts(input_file_name: String) -> Module {
     let cm: Lrc<SourceMap> = Default::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
+    // Real usage
+    // let fm = cm
+    //     .load_file(Path::new("counter.ts"))
+    //     .expect("failed to load test.ts");
+
+    // let fm = cm
+    //     .load_file(Path::new("vault.ts"))
+    //     .expect("failed to load test.ts");
+
     let fm = cm
-        .load_file(Path::new("vault.ts"))
+        .load_file(Path::new(&input_file_name))
         .expect("failed to load test.ts");
 
     let lexer = Lexer::new(
@@ -50,15 +45,5 @@ fn main() {
         .map_err(|e| e.into_diagnostic(&handler).emit())
         .expect("Failed to parse module.");
 
-    transpile(&module);
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::main;
-
-    #[test]
-    fn transpile() {
-        main()
-    }
+    return module;
 }

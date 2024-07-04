@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{Transfer as TransferSPL, TokenAccount, transfer as transfer_spl, Mint, Token},
+    token::{TokenAccount, Mint, Token, transfer as transfer_spl, Transfer as TransferSPL},
 };
 declare_id!("11111111111111111111111111111111");
 #[program]
@@ -76,11 +76,13 @@ pub mod EscrowProgram {
 #[derive(Accounts)]
 #[instruction(seed:u64)]
 pub struct MakeContext<'info> {
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    #[account()]
+    pub taker_mint: Account<'info, Mint>,
     #[account(seeds = [b"auth"], bump)]
     /// CHECK: This acc is safe
     pub auth: UncheckedAccount<'info>,
-    #[account()]
-    pub taker_mint: Account<'info, Mint>,
     #[account(
         init,
         payer = maker,
@@ -91,8 +93,8 @@ pub struct MakeContext<'info> {
         bump,
     )]
     pub vault: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
+    #[account()]
+    pub maker_mint: Account<'info, Mint>,
     #[account(
         mut,
         associated_token::mint = maker_mint,
@@ -109,22 +111,22 @@ pub struct MakeContext<'info> {
         bump,
     )]
     pub escrow: Account<'info, EscrowState>,
-    #[account()]
-    pub maker_mint: Account<'info, Mint>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct RefundContext<'info> {
+    #[account()]
+    pub maker_mint: Account<'info, Mint>,
     #[account(
         mut,
         associated_token::mint = maker_mint,
         associated_token::authority = maker,
     )]
     pub maker_ata: Account<'info, TokenAccount>,
-    #[account()]
-    pub maker_mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
     #[account(
         seeds = [b"escrow",
         maker.key().as_ref(),
@@ -143,8 +145,6 @@ pub struct RefundContext<'info> {
         bump,
     )]
     pub vault: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
     #[account(seeds = [b"auth"], bump)]
     /// CHECK: This acc is safe
     pub auth: UncheckedAccount<'info>,
@@ -154,14 +154,9 @@ pub struct RefundContext<'info> {
 }
 #[derive(Accounts)]
 pub struct TakeContext<'info> {
-    #[account(
-        mut,
-        associated_token::mint = maker_mint,
-        associated_token::authority = maker,
-    )]
-    pub maker_ata: Account<'info, TokenAccount>,
-    #[account()]
-    pub taker_mint: Account<'info, Mint>,
+    #[account(seeds = [b"auth"], bump)]
+    /// CHECK: This acc is safe
+    pub auth: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds = [b"vault",
@@ -171,6 +166,14 @@ pub struct TakeContext<'info> {
         bump,
     )]
     pub vault: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        init_if_needed,
+        payer = taker,
+        associated_token::mint = maker_mint,
+        associated_token::authority = taker,
+    )]
+    pub taker_ata: Account<'info, TokenAccount>,
     #[account(
         seeds = [b"escrow",
         maker.key().as_ref(),
@@ -183,15 +186,7 @@ pub struct TakeContext<'info> {
     )]
     pub escrow: Account<'info, EscrowState>,
     #[account()]
-    pub maker_mint: Account<'info, Mint>,
-    #[account(
-        mut,
-        init_if_needed,
-        payer = taker,
-        associated_token::mint = maker_mint,
-        associated_token::authority = taker,
-    )]
-    pub taker_ata: Account<'info, TokenAccount>,
+    pub taker_mint: Account<'info, Mint>,
     #[account(
         mut,
         init_if_needed,
@@ -202,11 +197,16 @@ pub struct TakeContext<'info> {
     pub taker_receive_ata: Account<'info, TokenAccount>,
     #[account(mut)]
     pub maker: SystemAccount<'info>,
+    #[account(
+        mut,
+        associated_token::mint = maker_mint,
+        associated_token::authority = maker,
+    )]
+    pub maker_ata: Account<'info, TokenAccount>,
+    #[account()]
+    pub maker_mint: Account<'info, Mint>,
     #[account(mut)]
     pub taker: Signer<'info>,
-    #[account(seeds = [b"auth"], bump)]
-    /// CHECK: This acc is safe
-    pub auth: UncheckedAccount<'info>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

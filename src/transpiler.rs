@@ -6,7 +6,7 @@ use crate::rs_types::{ProgramAccount, ProgramModule};
 use anyhow::Result;
 use swc_ecma_ast::*;
 
-pub fn transpile(module: &Module) -> Result<()> {
+pub fn transpile(module: &Module, output_file_name: String) -> Result<()> {
     let mut imports = vec![];
     let mut accounts: HashMap<String, ProgramAccount> = HashMap::new();
     let mut program_class: Option<ClassExpr> = None;
@@ -60,7 +60,7 @@ pub fn transpile(module: &Module) -> Result<()> {
     }
     let serialized_program = program.to_tokens();
     fs::write(
-        "escrow.rs",
+        &output_file_name,
         PrettyPlease::default().format_str(serialized_program?.to_string())?,
     )?;
     Ok(())
