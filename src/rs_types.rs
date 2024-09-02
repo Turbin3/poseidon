@@ -647,11 +647,11 @@ impl ProgramInstruction {
                                         if prop == "deriveWithBump" {
                                             let bump_members = c.args.last().ok_or(anyhow!("no last element in vector"))?.expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
                                             let bump_prop  = Ident::new(
-                                                bump_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref(),
+                                                &bump_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake),
                                                 Span::call_site(),
                                             );
                                             let bump_obj = Ident::new(
-                                                bump_members.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref(),
+                                                &bump_members.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake),
                                                 Span::call_site(),
                                             );
                                             cur_ix_acc.bump = Some(quote!{
@@ -701,8 +701,8 @@ impl ProgramInstruction {
                                             if cur_ix_acc.seeds.is_some(){
                                                 ix_body.push(quote!{
                                                     let transfer_accounts = Transfer {
-                                                        from: ctx.accounts.vault.to_account_info(),
-                                                        to: ctx.accounts.signer.to_account_info()
+                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info()
                                                     };
 
                                                     let seeds = &[
@@ -1054,7 +1054,7 @@ impl ProgramInstruction {
                                                     // }
                                                     let value = Literal::i64_unsuffixed(num.value as i64);
                                                     ix_body.push(quote!{
-                                                        ctx.#left_obj_ident.#left_prop_ident =  #value;
+                                                        ctx.accounts.#left_obj_ident.#left_prop_ident =  #value;
                                                     });
                                                 }
                                                 _ => {}
@@ -1075,7 +1075,7 @@ impl ProgramInstruction {
                                                             match prop {
                                                                 "add" => {
                                                                     ix_body.push(quote!{
-                                                                        ctx.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident + #value;
+                                                                        ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.accounts.#right_sub_obj_ident.#right_sub_prop_ident + #value;
                                                                     });
                                                                 },
                                                                 "sub" => {
@@ -1140,7 +1140,7 @@ impl ProgramInstruction {
                                                     if right_prop == "getBump" {
                                                         let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                                         ix_body.push(quote!{
-                                                            ctx.#left_obj_ident.#left_prop_ident = ctx.bumps.#right_obj_ident;
+                                                            ctx.accounts.#left_obj_ident.#left_prop_ident = ctx.bumps.#right_obj_ident;
                                                         })
                                                     }
                                                 }
@@ -1152,9 +1152,15 @@ impl ProgramInstruction {
                                             let right_prop = m.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let right_prop_ident = Ident::new(&right_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            ix_body.push(quote!{
-                                                ctx.accounts.#left_obj_ident.#left_prop_ident =  ctx.accounts.#right_obj_ident.#right_prop_ident;
-                                            });
+                                            if let Some(_) = ix_accounts.get(right_obj){
+                                                ix_body.push(quote!{
+                                                    ctx.accounts.#left_obj_ident.#left_prop_ident =  ctx.accounts.#right_obj_ident.key();
+                                                });
+                                            } else {
+                                                ix_body.push(quote!{
+                                                    ctx.accounts.#left_obj_ident.#left_prop_ident =  ctx.accounts.#right_obj_ident.#right_prop_ident;
+                                                });
+                                            }
                                         }
                                         _ => {}
                                     }
@@ -1525,6 +1531,7 @@ impl ProgramModule {
 
             #[program]
             pub mod #program_name {
+                use super::*;
 
                 #(#serialized_instructions)*
             }

@@ -1,12 +1,14 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program::{Transfer, transfer};
 declare_id!("11111111111111111111111111111111");
 #[program]
 pub mod VaultProgram {
+    use super::*;
     pub fn initialize(ctx: Context<InitializeContext>) -> Result<()> {
-        ctx.accounts.state.owner = ctx.accounts.owner.key;
-        ctx.state.state_bump = ctx.bumps.state;
-        ctx.state.auth_bump = ctx.bumps.auth;
-        ctx.state.vault_bump = ctx.bumps.vault;
+        ctx.accounts.state.owner = ctx.accounts.owner.key();
+        ctx.accounts.state.state_bump = ctx.bumps.state;
+        ctx.accounts.state.auth_bump = ctx.bumps.auth;
+        ctx.accounts.state.vault_bump = ctx.bumps.vault;
         Ok(())
     }
     pub fn deposit(ctx: Context<DepositContext>, amount: u64) -> Result<()> {
@@ -24,7 +26,7 @@ pub mod VaultProgram {
     pub fn withdraw(ctx: Context<WithdrawContext>, amount: u64) -> Result<()> {
         let transfer_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
-            to: ctx.accounts.signer.to_account_info(),
+            to: ctx.accounts.owner.to_account_info(),
         };
         let seeds = &[
             b"vault",
@@ -43,8 +45,9 @@ pub mod VaultProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
+    #[account(seeds = [b"auth", state.key().as_ref()], bump)]
+    /// CHECK: This acc is safe
+    pub auth: UncheckedAccount<'info>,
     #[account(
         init,
         payer = owner,
@@ -54,37 +57,36 @@ pub struct InitializeContext<'info> {
         bump,
     )]
     pub state: Account<'info, Vault>,
-    #[account(seeds = [b"auth", state.key().as_ref()], bump)]
-    /// CHECK: ignore
-    pub auth: UncheckedAccount<'info>,
     #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump)]
     pub vault: SystemAccount<'info>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct DepositContext<'info> {
-    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
-    pub state: Account<'info, Vault>,
-    #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump = state.vaultBump)]
-    pub vault: SystemAccount<'info>,
-    #[account(seeds = [b"auth", state.key().as_ref()], bump = state.authBump)]
-    /// CHECK: ignore
-    pub auth: UncheckedAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump = state.vault_bump)]
+    pub vault: SystemAccount<'info>,
+    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.state_bump)]
+    pub state: Account<'info, Vault>,
+    #[account(seeds = [b"auth", state.key().as_ref()], bump = state.auth_bump)]
+    /// CHECK: This acc is safe
+    pub auth: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
 pub struct WithdrawContext<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
-    #[account(seeds = [b"auth", state.key().as_ref()], bump = state.authBump)]
-    /// CHECK: ignore
-    pub auth: UncheckedAccount<'info>,
-    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.stateBump)]
-    pub state: Account<'info, Vault>,
-    #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump = state.vaultBump)]
+    #[account(mut, seeds = [b"vault", auth.key().as_ref()], bump = state.vault_bump)]
     pub vault: SystemAccount<'info>,
+    #[account(seeds = [b"auth", state.key().as_ref()], bump = state.auth_bump)]
+    /// CHECK: This acc is safe
+    pub auth: UncheckedAccount<'info>,
+    #[account(seeds = [b"state", owner.key().as_ref()], bump = state.state_bump)]
+    pub state: Account<'info, Vault>,
     pub system_program: Program<'info, System>,
 }
 #[account]
