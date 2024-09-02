@@ -1,35 +1,36 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     token::{
-        Transfer as TransferSPL, Mint, transfer as transfer_spl, Token, TokenAccount,
+        TokenAccount, transfer as transfer_spl, Mint, Transfer as TransferSPL, Token,
     },
     associated_token::AssociatedToken,
 };
 declare_id!("11111111111111111111111111111111");
 #[program]
 pub mod EscrowProgram {
+    use super::*;
     pub fn make(
         ctx: Context<MakeContext>,
         deposit_amount: u64,
         offer_amount: u64,
         seed: u64,
     ) -> Result<()> {
-        ctx.escrow.auth_bump = ctx.bumps.auth;
-        ctx.escrow.vault_bump = ctx.bumps.vault;
-        ctx.escrow.escrow_bump = ctx.bumps.escrow;
-        ctx.accounts.escrow.maker = ctx.accounts.maker.key;
-        ctx.accounts.escrow.maker_mint = ctx.accounts.maker_mint.key;
-        ctx.accounts.escrow.taker_mint = ctx.accounts.taker_mint.key;
+        ctx.accounts.escrow.auth_bump = ctx.bumps.auth;
+        ctx.accounts.escrow.vault_bump = ctx.bumps.vault;
+        ctx.accounts.escrow.escrow_bump = ctx.bumps.escrow;
+        ctx.accounts.escrow.maker = ctx.accounts.maker.key();
+        ctx.accounts.escrow.maker_mint = ctx.accounts.maker_mint.key();
+        ctx.accounts.escrow.taker_mint = ctx.accounts.taker_mint.key();
         let cpi_accounts = TransferSPL {
             from: ctx.accounts.maker_ata.to_account_info(),
             to: ctx.accounts.vault.to_account_info(),
             authority: ctx.accounts.maker.to_account_info(),
         };
-        let ctx = CpiContext::new(
+        let cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             cpi_accounts,
         );
-        transfer_spl(ctx, deposit_amount)?;
+        transfer_spl(cpi_ctx, deposit_amount)?;
         Ok(())
     }
     pub fn refund(ctx: Context<RefundContext>) -> Result<()> {
@@ -40,12 +41,12 @@ pub mod EscrowProgram {
         };
         let signer_seeds = &[&b"auth"[..], &[ctx.accounts.escrow.auth_bump]];
         let binding = [&signer_seeds[..]];
-        let ctx = CpiContext::new_with_signer(
+        let cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             cpi_accounts,
             &binding,
         );
-        transfer_spl(ctx, escrow.amount)?;
+        transfer_spl(cpi_ctx, ctx.accounts.escrow.amount)?;
         Ok(())
     }
     pub fn take(ctx: Context<TakeContext>) -> Result<()> {
@@ -54,11 +55,11 @@ pub mod EscrowProgram {
             to: ctx.accounts.maker_ata.to_account_info(),
             authority: ctx.accounts.taker.to_account_info(),
         };
-        let ctx = CpiContext::new(
+        let cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             cpi_accounts,
         );
-        transfer_spl(ctx, escrow.amount)?;
+        transfer_spl(cpi_ctx, ctx.accounts.escrow.amount)?;
         let cpi_accounts = TransferSPL {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.taker_receive_ata.to_account_info(),
@@ -66,35 +67,18 @@ pub mod EscrowProgram {
         };
         let signer_seeds = &[&b"auth"[..], &[ctx.accounts.escrow.auth_bump]];
         let binding = [&signer_seeds[..]];
-        let ctx = CpiContext::new_with_signer(
+        let cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             cpi_accounts,
             &binding,
         );
-        transfer_spl(ctx, escrow.amount)?;
+        transfer_spl(cpi_ctx, ctx.accounts.escrow.amount)?;
         Ok(())
     }
 }
 #[derive(Accounts)]
 #[instruction(seed:u64)]
 pub struct MakeContext<'info> {
-    #[account()]
-    pub maker_mint: Account<'info, Mint>,
-    #[account()]
-    pub taker_mint: Account<'info, Mint>,
-    #[account(seeds = [b"auth"], bump)]
-    /// CHECK: This acc is safe
-    pub auth: UncheckedAccount<'info>,
-    #[account(
-        init,
-        payer = maker,
-        seeds = [b"vault",
-        escrow.key().as_ref()],
-        associated_token::mint = maker_mint,
-        associated_token::authority = auth,
-        bump,
-    )]
-    pub vault: Account<'info, TokenAccount>,
     #[account(
         init,
         payer = maker,
@@ -105,14 +89,31 @@ pub struct MakeContext<'info> {
         bump,
     )]
     pub escrow: Account<'info, EscrowState>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
     #[account(
         mut,
         associated_token::mint = maker_mint,
         associated_token::authority = maker,
     )]
     pub maker_ata: Account<'info, TokenAccount>,
+    #[account()]
+    pub taker_mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = maker,
+        seeds = [b"vault",
+        escrow.key().as_ref()],
+        token::mint = maker_mint,
+        token::authority = auth,
+        bump,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(seeds = [b"auth"], bump)]
+    /// CHECK: This acc is safe
+    pub auth: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    #[account()]
+    pub maker_mint: Account<'info, Mint>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -120,6 +121,24 @@ pub struct MakeContext<'info> {
 #[derive(Accounts)]
 pub struct RefundContext<'info> {
     #[account(
+        mut,
+        associated_token::mint = maker_mint,
+        associated_token::authority = maker,
+    )]
+    pub maker_ata: Account<'info, TokenAccount>,
+    #[account()]
+    pub maker_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        seeds = [b"vault",
+        escrow.key().as_ref()],
+        token::mint = maker_mint,
+        token::authority = auth,
+        bump,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(
+        mut,
         seeds = [b"escrow",
         maker.key().as_ref(),
         escrow.seed.to_le_bytes().as_ref()],
@@ -128,28 +147,11 @@ pub struct RefundContext<'info> {
         close = maker,
     )]
     pub escrow: Account<'info, EscrowState>,
-    #[account(
-        mut,
-        seeds = [b"vault",
-        escrow.key().as_ref()],
-        associated_token::mint = maker_mint,
-        associated_token::authority = auth,
-        bump,
-    )]
-    pub vault: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub maker: Signer<'info>,
     #[account(seeds = [b"auth"], bump)]
     /// CHECK: This acc is safe
     pub auth: UncheckedAccount<'info>,
-    #[account()]
-    pub maker_mint: Account<'info, Mint>,
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    #[account(
-        mut,
-        associated_token::mint = maker_mint,
-        associated_token::authority = maker,
-    )]
-    pub maker_ata: Account<'info, TokenAccount>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -157,14 +159,10 @@ pub struct RefundContext<'info> {
 #[derive(Accounts)]
 pub struct TakeContext<'info> {
     #[account()]
-    pub taker_mint: Account<'info, Mint>,
-    #[account(seeds = [b"auth"], bump)]
-    /// CHECK: This acc is safe
-    pub auth: UncheckedAccount<'info>,
+    pub maker_mint: Account<'info, Mint>,
     #[account(mut)]
     pub maker: SystemAccount<'info>,
     #[account(
-        mut,
         init_if_needed,
         payer = taker,
         associated_token::mint = maker_mint,
@@ -173,42 +171,45 @@ pub struct TakeContext<'info> {
     pub taker_receive_ata: Account<'info, TokenAccount>,
     #[account(mut)]
     pub taker: Signer<'info>,
-    #[account()]
-    pub maker_mint: Account<'info, Mint>,
-    #[account(
-        seeds = [b"escrow",
-        maker.key().as_ref(),
-        escrow.seed.to_le_bytes().as_ref()],
-        has_one = maker,
-        has_one = makerMint,
-        has_one = takerMint,
-        bump,
-        close = maker,
-    )]
-    pub escrow: Account<'info, EscrowState>,
+    #[account(seeds = [b"auth"], bump)]
+    /// CHECK: This acc is safe
+    pub auth: UncheckedAccount<'info>,
     #[account(
         mut,
+        seeds = [b"vault",
+        escrow.key().as_ref()],
+        token::mint = maker_mint,
+        token::authority = auth,
+        bump,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(
         init_if_needed,
         payer = taker,
         associated_token::mint = maker_mint,
         associated_token::authority = taker,
     )]
     pub taker_ata: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        seeds = [b"vault",
-        escrow.key().as_ref()],
-        associated_token::mint = maker_mint,
-        associated_token::authority = auth,
-        bump,
-    )]
-    pub vault: Account<'info, TokenAccount>,
+    #[account()]
+    pub taker_mint: Account<'info, Mint>,
     #[account(
         mut,
         associated_token::mint = maker_mint,
         associated_token::authority = maker,
     )]
     pub maker_ata: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [b"escrow",
+        maker.key().as_ref(),
+        escrow.seed.to_le_bytes().as_ref()],
+        has_one = maker,
+        has_one = maker_mint,
+        has_one = taker_mint,
+        bump,
+        close = maker,
+    )]
+    pub escrow: Account<'info, EscrowState>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

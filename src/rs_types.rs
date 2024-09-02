@@ -20,9 +20,10 @@ use crate::{
 use anyhow::{anyhow, Ok, Result};
 
 #[derive(Debug, Clone)]
-pub struct Ata {
+pub struct Ta {
     mint: String,
     authority: String,
+    is_ata: bool
 }
 #[derive(Clone, Debug)]
 
@@ -36,7 +37,7 @@ pub struct InstructionAccount {
     pub is_initifneeded: bool,
     pub is_close: bool,
     pub is_mint: bool,
-    pub ata: Option<Ata>,
+    pub ta: Option<Ta>,
     pub has_one: Vec<String>,
     pub close: Option<String>,
     pub seeds: Option<Vec<TokenStream>>,
@@ -57,7 +58,7 @@ impl InstructionAccount {
             is_init: false,
             is_initifneeded: false,
             is_mint: false,
-            ata: None,
+            ta: None,
             has_one: vec![],
             close: None,
             seeds: None,
@@ -81,13 +82,20 @@ impl InstructionAccount {
             None => quote!(),
         };
 
-        let ata = match &self.ata {
+        let ata = match &self.ta {
             Some(a) => {
                 let mint = Ident::new(&a.mint, proc_macro2::Span::call_site());
                 let authority = Ident::new(&a.authority, proc_macro2::Span::call_site());
-                quote! {
-                    associated_token::mint = #mint,
-                    associated_token::authority = #authority,
+                if a.is_ata{
+                    quote! {
+                        associated_token::mint = #mint,
+                        associated_token::authority = #authority,
+                    }
+                } else {
+                    quote! {
+                        token::mint = #mint,
+                        token::authority = #authority,
+                    }
                 }
             }
             None => quote!(),
@@ -132,13 +140,12 @@ impl InstructionAccount {
 
         let init = match self.is_init {
             true => quote! {init, #payer, #space},
-            false => {
-                if self.is_mut {
-                    quote! {mut,}
-                } else {
-                    quote! {}
-                }
-            }
+            false => quote! {}
+        };
+
+        let mutable  = match  self.is_mut && !(self.is_init || self.is_initifneeded) {
+            true => quote! {mut,},
+            false => quote! {}
         };
         let mut has: TokenStream = quote! {};
         if !self.has_one.is_empty() {
@@ -163,6 +170,7 @@ impl InstructionAccount {
                 #[account(
                     #init
                     #init_if_needed
+                    #mutable
                     #seeds
                     #ata
                     #has
@@ -246,7 +254,7 @@ impl ProgramInstruction {
                     proc_macro2::Span::call_site(),
                 );
                 amount = quote! {
-                    #amount_obj_ident.#amount_prop_ident
+                    ctx.accounts.#amount_obj_ident.#amount_prop_ident
                 };
             }
             Expr::Ident(i) => {
@@ -616,20 +624,22 @@ impl ProgramInstruction {
                                         if cur_ix_acc.type_str == "AssociatedTokenAccount" {
                                             let mint = derive_args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let ata_auth = derive_args[1].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                            cur_ix_acc.ata = Some(
-                                                Ata {
+                                            cur_ix_acc.ta = Some(
+                                                Ta {
                                                     mint: mint.to_case(Case::Snake),
-                                                    authority: ata_auth.to_case(Case::Snake)
+                                                    authority: ata_auth.to_case(Case::Snake),
+                                                    is_ata: true,
                                                 }
                                             );
                                             cur_ix_acc.is_mut = true;
                                         } else if cur_ix_acc.type_str == "TokenAccount" {
                                             let mint = derive_args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                            let ata_auth = derive_args[2].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                            cur_ix_acc.ata = Some(
-                                                Ata {
+                                            let ta_auth = derive_args[2].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            cur_ix_acc.ta = Some(
+                                                Ta {
                                                     mint: mint.to_case(Case::Snake),
-                                                    authority: ata_auth.to_case(Case::Snake)
+                                                    authority: ta_auth.to_case(Case::Snake),
+                                                    is_ata: false,
                                                 }
                                             );
                                             cur_ix_acc.is_mut = true;
@@ -675,12 +685,13 @@ impl ProgramInstruction {
                                         }
                                         if chaincall1prop == "close" {
                                             cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                            cur_ix_acc.is_mut = true;
                                         }
                                         if chaincall2prop == "has" {
                                             let elems = &c.callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_call().ok_or(PoseidonError::CallNotFound)?.args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
                                             let mut has_one:Vec<String> = vec![];
                                             for elem in elems.into_iter().flatten() {
-                                                    has_one.push(elem.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.to_string());
+                                                    has_one.push(elem.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.to_string().to_case(Case::Snake));
                                             }
                                             cur_ix_acc.has_one = has_one;
 
@@ -713,12 +724,12 @@ impl ProgramInstruction {
 
                                                     let pda_signer = &[&seeds[..]];
 
-                                                    let transfer_ctx = CpiContext::new_with_signer(
+                                                    let cpi_ctx = CpiContext::new_with_signer(
                                                         ctx.accounts.system_program.to_account_info(),
                                                         transfer_accounts,
                                                         pda_signer
                                                     );
-                                                    transfer(transfer_ctx, amount)?;
+                                                    transfer(cpi_ctx, amount)?;
                                                 });
                                             } else {
                                                 ix_body.push(quote!{
@@ -726,11 +737,11 @@ impl ProgramInstruction {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
                                                         to: ctx.accounts.#to_acc_ident.to_account_info()
                                                     };
-                                                    let transfer_ctx = CpiContext::new(
+                                                    let cpi_ctx = CpiContext::new(
                                                         ctx.accounts.system_program.to_account_info(),
                                                         transfer_accounts
                                                     );
-                                                    transfer(transfer_ctx, #amount)?;
+                                                    transfer(cpi_ctx, #amount)?;
                                                 });
                                             }
                                         }
@@ -764,8 +775,8 @@ impl ProgramInstruction {
                                                         &[ctx.accounts.escrow.auth_bump],
                                                     ];
                                                     let binding = [&signer_seeds[..]];
-                                                    let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                                    transfer_spl(ctx, #amount)?;
+                                                    let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+                                                    transfer_spl(cpi_ctx, #amount)?;
                                                 });
                                             } else {
                                                 ix_body.push(quote!{
@@ -774,8 +785,8 @@ impl ProgramInstruction {
                                                         to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                     };
-                                                    let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                    transfer_spl(ctx, #amount)?;
+                                                    let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                    transfer_spl(cpi_ctx, #amount)?;
                                                 })
                                             }
                                         }
@@ -1022,8 +1033,8 @@ impl ProgramInstruction {
                                                             to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                             authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                         };
-                                                        let ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                        transfer_checked(ctx, #amount)?;
+                                                        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                        transfer_checked(cpi_ctx, #amount)?;
                                                     })
                                                 }
                                             }
