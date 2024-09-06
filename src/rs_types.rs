@@ -23,7 +23,7 @@ use anyhow::{anyhow, Ok, Result};
 pub struct Ta {
     mint: String,
     authority: String,
-    is_ata: bool
+    is_ata: bool,
 }
 #[derive(Clone, Debug)]
 
@@ -86,7 +86,7 @@ impl InstructionAccount {
             Some(a) => {
                 let mint = Ident::new(&a.mint, proc_macro2::Span::call_site());
                 let authority = Ident::new(&a.authority, proc_macro2::Span::call_site());
-                if a.is_ata{
+                if a.is_ata {
                     quote! {
                         associated_token::mint = #mint,
                         associated_token::authority = #authority,
@@ -140,12 +140,12 @@ impl InstructionAccount {
 
         let init = match self.is_init {
             true => quote! {init, #payer, #space},
-            false => quote! {}
+            false => quote! {},
         };
 
-        let mutable  = match  self.is_mut && !(self.is_init || self.is_initifneeded) {
+        let mutable = match self.is_mut && !(self.is_init || self.is_initifneeded) {
             true => quote! {mut,},
-            false => quote! {}
+            false => quote! {},
         };
         let mut has: TokenStream = quote! {};
         if !self.has_one.is_empty() {
@@ -1293,7 +1293,7 @@ impl ProgramAccount {
             _ => panic!("Custom accounts must extend Account type"),
         }
         let name: String = interface.id.sym.to_string();
-        let mut space: u16 = 0;
+        let mut space: u16 = 8; // anchor discriminator
         let fields: Vec<ProgramAccountField> = interface
             .body
             .body
