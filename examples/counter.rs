@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 declare_id!("HC2oqz2p6DEWfrahenqdq2moUcga9c9biqRBcdK3XKU1");
 #[program]
-pub mod VoteProgram {
+pub mod vote_program {
     use super::*;
     pub fn initialize(ctx: Context<InitializeContext>) -> Result<()> {
         ctx.accounts.state.vote = 0;
@@ -18,10 +18,10 @@ pub mod VoteProgram {
 }
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
-    #[account(init, payer = user, space = 9, seeds = [b"vote"], bump)]
-    pub state: Account<'info, VoteState>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(init, payer = user, space = 17, seeds = [b"vote"], bump)]
+    pub state: Account<'info, VoteState>,
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
