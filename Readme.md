@@ -1,7 +1,12 @@
-# Poseidon 
+# Poseidon
+
 Now you can write solana programs in Typescript
 
 poseidon is a transpiler that helps you to convert your Typescript solana programs to anchor. Which is especially convinient for people who are just getting started with solana.
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Quick Start & Examples](#quick-start--examples)
 
 ## Installation
 
@@ -12,7 +17,6 @@ Clone the repository:
 ```sh
 git clone https://github.com/3uild-3thos/poseidon
 ```
-
 
 Navigate to the project directory:
 
@@ -35,3 +39,9 @@ poseidon --input "input.ts" --output "output.rs"
 ```
 
 Check out examples in the repo to learn how to write Poseidon Typescript which can be transpiled to anchor programs. There are vote, vault and escrow(.ts files and their tranpiled .rs files)
+
+## Quick Start & Examples
+
+Go to [examples/quick-start.md](https://github.com/3uild-3thos/poseidon/tree/master/examples/quick-start.md) to learn how to write your first Solana program in TypeScript using Poseidon and Anchor!
+
+For more examples, check out the [examples](https://github.com/3uild-3thos/poseidon/tree/restruct/optimzie-for-tutorial/examples) directory. You’ll find examples of vote, vault, and escrow programs in both TypeScript and the corresponding Rust programs transpiled by Poseidon.
