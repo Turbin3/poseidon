@@ -1071,6 +1071,12 @@ impl ProgramInstruction {
                                                 _ => {}
                                             }
                                         },
+                                        Expr::Ident(right_swc_ident) => {
+                                            let right_ident = Ident::new(&right_swc_ident.sym.as_ref().to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            ix_body.push(quote!{
+                                                ctx.accounts.#left_obj_ident.#left_prop_ident = #right_ident;
+                                            });
+                                        },
                                         Expr::Call(CallExpr { span: _, callee, args, type_args: _ }) => {
                                             let memebers = callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound).cloned()?;
                                             let prop: &str = &memebers.prop.as_ident().ok_or(anyhow!("expected a prop"))?.sym.as_ref();
