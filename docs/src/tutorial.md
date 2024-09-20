@@ -1,4 +1,4 @@
-# Poseidon Quick Start
+# Tutorial
 
 <!-- toc -->
 
@@ -67,7 +67,7 @@ Congratulations! You’ve completed the most challenging part! Setting up the en
 
 ## Your First Solana Program with TypeScript
 
-> We’ll build a simple voting program with three instructions: `initialize`, `upvote`, and `downvote`, as an example.
+> We’ll build a simple vote program with three instructions: `initialize`, `upvote`, and `downvote`.
 
 Remember what Poseidon does for you? Here’s a quick recap:
 
@@ -92,7 +92,7 @@ $ touch src/voteProgram.ts
 
 Open `voteProgram.ts` in VS Code (or any IDE you prefer) and add the initial pieces of code (without the logic).
 
-```tsx
+```typescript
 import { Account, Pubkey, Result, i64, u8, Signer } from "@3thos/poseidon";
 
 export default class VoteProgram {
@@ -111,7 +111,7 @@ In Solana, programs are stateless, meaning the functions above are “pure funct
 
 Ultimately, we need a place to store our voting results, just like storing data in a database in Web2. In Solana, we called it “Account.” Let’s add the account at the end of our program.
 
-```tsx
+```typescript
 // ...
 
 export interface VoteState extends Account {
@@ -126,7 +126,7 @@ We’ll use the `vote` field to store the voting result, and we can ignore the `
 
 We’ve defined the `VoteState` account as our data structure, and now we're ready to implement the logic inside each instruction. Let’s start with the `initialize` instruction:
 
-```tsx
+```typescript
 // Pass all the accounts we need as the parameters
 initialize(state: VoteState, user: Signer): Result {
 
@@ -147,7 +147,7 @@ After the state account is initialized, we can assign an initial value, `new i64
 
 We’re almost done. Let’s update the `upvote` and `downvote` instructions:
 
-```tsx
+```typescript
 upvote(state: VoteState): Result {
     state.derive(["vote"]);
     state.vote = state.vote.add(1);
@@ -223,7 +223,7 @@ $ poseidon -i ts-programs/src/voteProgram.ts -o programs/vote_program/src/lib.rs
 
 Let’s replace the contents of `tests/vote_program.ts` with the code below:
 
-```bash
+```typescript
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { VoteProgram } from "../target/types/vote_program";
@@ -298,15 +298,15 @@ If you want to verify it on the Solana Devnet (a network for developers testing 
 $ anchor test --provider.cluster devnet
 ```
 
-After all the tests have passed, you can copy the transaction IDs and verify them on [Solana’s blockchain explorer](https://explorer.solana.com/?cluster=devnet). Here’s a snapshot of what it looks like:
+After all the tests have passed, you can copy the transaction IDs and verify them on [Solana’s blockchain explorer](https://explorer.solana.com/?cluster=devnet).
 
-![Solana Devnet Explorer](../images/solana-explorer.png)
+Here’s the example of the transaction ID ([ApCnLHqiAm...amxDb439jg](https://explorer.solana.com/tx/ApCnLHqiAmdxmihJcadA4TDd6NnbMsZia9hdXhbomzoFFZWm4G4VSTg61dbai33M3yXKstSJJfPV5amxDb439jg?cluster=devnet)) might look like in the explorer on Devnet.
 
 ## Thoughts & Takeaway
 
 Congratulations! 🎉 You've completed your first Solana program in TypeScript!
 
-Poseidon helps by transpiling your TypeScript program into Rust using the Anchor framework format. You can check out `examples/counter/rust/vote.rs` to see what the code looks like in Rust. This will help you better understand Rust syntax and Solana’s design principles.
+Poseidon helps by transpiling your TypeScript program into Rust using the Anchor framework format. You can check out [examples/vote/rust/vote.rs](https://github.com/3uild-3thos/poseidon/blob/master/examples/vote/rust/vote.rs) to see what the code looks like in Rust. This will help you better understand Rust syntax and Solana’s design principles.
 
 After finishing this tutorial, we highly recommend going through all the resources in the reference section one-by-one. This will give you a more comprehensive understanding of how Solana works and help clarify some common jargon, such as account, PDA, rent, and more.
 
@@ -314,6 +314,6 @@ We hope you enjoyed this tutorial, and we look forward to seeing you in the wild
 
 ## Reference
 
-- https://solana.com/docs/core/accounts
-- https://docs.solanalabs.com/implemented-proposals/rent
-- https://solana.com/docs/core/pda
+- [https://solana.com/docs/core/accounts](https://solana.com/docs/core/accounts)
+- [https://docs.solanalabs.com/implemented-proposals/rent](https://docs.solanalabs.com/implemented-proposals/rent)
+- [https://solana.com/docs/core/pda](https://solana.com/docs/core/pda)
