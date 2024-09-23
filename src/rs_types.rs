@@ -718,7 +718,7 @@ impl ProgramInstruction {
 
                                                     let seeds = &[
                                                         b"vault",
-                                                        ctx.accounts.state.to_account_info().key.as_ref(),
+                                                        ctx.accounts.auth.to_account_info().key.as_ref(),
                                                         &[ctx.accounts.state.vault_bump],
                                                     ];
 
@@ -1212,7 +1212,10 @@ impl ProgramInstruction {
     }
 
     pub fn to_tokens(&self) -> TokenStream {
-        let name = Ident::new(&self.name.to_case(Case::Snake), proc_macro2::Span::call_site());
+        let name = Ident::new(
+            &self.name.to_case(Case::Snake),
+            proc_macro2::Span::call_site(),
+        );
         let ctx_name = Ident::new(
             &format!("{}Context", &self.name.to_case(Case::Pascal)),
             proc_macro2::Span::call_site(),
@@ -1492,7 +1495,10 @@ impl ProgramModule {
     }
 
     pub fn to_tokens(&self) -> Result<TokenStream> {
-        let program_name = Ident::new(&self.name.to_case(Case::Snake), proc_macro2::Span::call_site());
+        let program_name = Ident::new(
+            &self.name.to_case(Case::Snake),
+            proc_macro2::Span::call_site(),
+        );
         let program_id = Literal::string(&self.id);
         let serialized_instructions: Vec<TokenStream> =
             self.instructions.iter().map(|x| x.to_tokens()).collect();
