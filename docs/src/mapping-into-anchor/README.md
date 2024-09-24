@@ -12,7 +12,7 @@ In this section, we will dive deep into how TypeScript code is mapped to the Anc
 
 ## `Escrow` Program
 
-You can find the code for the `escrow` program in the [`examples/escrow`](https://github.com/3uild-3thos/poseidon/blob/master/examples/escrow/) directory of the Poseidon repository.
+You can find the code for the `escrow` program in the [`examples/escrow`](../../../examples/escrow/) directory of the Poseidon repository.
 
 ### TypeScript (Poseidon)
 

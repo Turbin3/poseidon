@@ -15,7 +15,7 @@ Make sure you have Rust and Cargo installed
 Clone the repository:
 
 ```sh
-git clone https://github.com/3uild-3thos/poseidon
+git clone https://github.com/Turbin3/poseidon
 ```
 
 Navigate to the project directory:
@@ -42,6 +42,6 @@ Check out examples in the repo to learn how to write Poseidon Typescript which c
 
 ## Tutorial & Examples
 
-Go to [docs/src/tutorial.md](https://github.com/3uild-3thos/poseidon/tree/master/docs/src/tutorial.md) to learn how to write your first Solana program in TypeScript using Poseidon and Anchor!
+Go to [docs/src/tutorial.md](./docs/src/tutorial.md) to learn how to write your first Solana program in TypeScript using Poseidon and Anchor!
 
-For more examples, check out the [examples](https://github.com/3uild-3thos/poseidon/tree/restruct/optimzie-for-tutorial/examples) directory. You’ll find examples of vote, vault, and escrow programs in both TypeScript and the corresponding Rust programs transpiled by Poseidon.
+For more examples, check out the [examples](./examples) directory. You’ll find examples of vote, vault, and escrow programs in both TypeScript and the corresponding Rust programs transpiled by Poseidon.

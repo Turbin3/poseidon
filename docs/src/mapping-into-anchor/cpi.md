@@ -137,4 +137,4 @@ SystemProgram.transfer(
 );
 ```
 
-Can check the full codebase in the [vault](https://github.com/3uild-3thos/poseidon/blob/master/examples/vault/typescript/vault.ts) example.
+Can check the full codebase in the [vault](../../../examples/vault/typescript/vault.ts) example.

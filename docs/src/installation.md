@@ -5,7 +5,7 @@ Make sure you have Rust and Cargo installed
 Clone the repository:
 
 ```sh
-git clone https://github.com/3uild-3thos/poseidon
+git clone https://github.com/Turbin3/poseidon
 ```
 
 Navigate to the project directory:

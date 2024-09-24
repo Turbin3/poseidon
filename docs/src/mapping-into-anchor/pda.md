@@ -69,7 +69,7 @@ pub struct MakeContext<'info> {
 }
 ```
 
-If you're creating a PDA with a given `bump`, you can use the `deriveWithBump` method with the `bump` following the `seed` instead. See the example below or the [vault](https://github.com/3uild-3thos/poseidon/blob/master/examples/vault/typescript/vault.ts) example for more details:
+If you're creating a PDA with a given `bump`, you can use the `deriveWithBump` method with the `bump` following the `seed` instead. See the example below or the [vault](../../../examples/vault/typescript/vault.ts) example for more details:
 
 ```typescript
 auth.deriveWithBump(["auth", state.key], state.authBump);
