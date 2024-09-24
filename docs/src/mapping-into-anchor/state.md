@@ -99,7 +99,7 @@ pub mod escrow_program {
 
 Also if you want to do some arithmetic operations, `@3thos/poseidon` package provides the necessary types for that.
 
-Check out [vote](https://github.com/3uild-3thos/poseidon/blob/master/examples/vote/typescript/vote.ts) example to see how to use them. Here's a snippet from the example:
+Check out [vote](../../../examples/vote/typescript/vote.ts) example to see how to use them. Here's a snippet from the example:
 
 ```typescript
 // initialize the state

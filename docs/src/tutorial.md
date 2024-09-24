@@ -141,7 +141,7 @@ initialize(state: VoteState, user: Signer): Result {
 
 If a user wants to store anything on Solana, such as `VoteState` in this case, they’ll need to pay [rent](https://docs.solanalabs.com/implemented-proposals/rent) for the space they’re using, as validators need to store the data on their hardware. To cover this rent, we add `user` with the `Signer` type as a parameter, allowing the user to transfer their SOL to the `VoteState` account to pay for the rent.
 
-We’ve mentioned PDA several times, but what is it? [PDA](https://solana.com/docs/core/pda) (Program Derived Address) is an important concept on Solana. It allows an account to be controlled by a specified program. To construct a PDA, you need a seed—a byte array that can be derived from a string, public key, integer, or even combinations of these! In this case, we use the string `“vote”` as the seed. You can find more examples of different seed combinations in the provided [examples](https://github.com/3uild-3thos/poseidon/tree/master/examples).
+We’ve mentioned PDA several times, but what is it? [PDA](https://solana.com/docs/core/pda) (Program Derived Address) is an important concept on Solana. It allows an account to be controlled by a specified program. To construct a PDA, you need a seed—a byte array that can be derived from a string, public key, integer, or even combinations of these! In this case, we use the string `“vote”` as the seed. You can find more examples of different seed combinations in the provided [examples](../../examples).
 
 After the state account is initialized, we can assign an initial value, `new i64(0)`, to it.
 
@@ -306,7 +306,7 @@ Here’s the example of the transaction ID ([ApCnLHqiAm...amxDb439jg](https://ex
 
 Congratulations! 🎉 You've completed your first Solana program in TypeScript!
 
-Poseidon helps by transpiling your TypeScript program into Rust using the Anchor framework format. You can check out [examples/vote/rust/vote.rs](https://github.com/3uild-3thos/poseidon/blob/master/examples/vote/rust/vote.rs) to see what the code looks like in Rust. This will help you better understand Rust syntax and Solana’s design principles.
+Poseidon helps by transpiling your TypeScript program into Rust using the Anchor framework format. You can check out [examples/vote/rust/vote.rs](../../examples/vote/rust/vote.rs) to see what the code looks like in Rust. This will help you better understand Rust syntax and Solana’s design principles.
 
 After finishing this tutorial, we highly recommend going through all the resources in the reference section one-by-one. This will give you a more comprehensive understanding of how Solana works and help clarify some common jargon, such as account, PDA, rent, and more.
 
