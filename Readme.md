@@ -2,7 +2,7 @@
 
 Now you can write solana programs in Typescript
 
-poseidon is a transpiler that helps you to convert your Typescript solana programs to anchor. Which is especially convinient for people who are just getting started with solana.
+poseidon is a transpiler that helps you to convert your Typescript solana programs to anchor. Which is especially convenient for people who are just getting started with solana.
 
 - [Installation](#installation)
 - [Usage](#usage)
