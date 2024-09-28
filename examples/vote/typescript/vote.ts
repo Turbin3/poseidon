@@ -1,4 +1,4 @@
-import { Account, Pubkey, Result, i64, u8, Signer } from "@turbin3/poseidon";
+import { Account, Pubkey, Result, i64, u8, Signer } from "@solanaturbine/poseidon";
 
 // creating a class VoteProgram is similar to creating a creating a mod in anchor with all the instructions inside
 export default class VoteProgram {
