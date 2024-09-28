@@ -32,7 +32,7 @@ import {
   UncheckedAccount,
   u64,
   u8,
-} from "@3thos/poseidon";
+} from "@solanaturbine/poseidon";
 
 export default class EscrowProgram {
   static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");

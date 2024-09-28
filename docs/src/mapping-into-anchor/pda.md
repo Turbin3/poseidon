@@ -4,7 +4,7 @@ Program Derived Addresses (PDAs) are a way to derive a new address from a `seed`
 
 For example, in the escrow program, the `escrow` account is created as a PDA. This ensures that the `escrow` account is tied to the escrow program and cannot be controlled by any other program or entity.
 
-To define an account as a PDA with `@3thos/poseidon`, you can use the `derive` method for every account by specifying your `seed` within an array (`[]`) as the first parameter.
+To define an account as a PDA with `@solanaturbine/poseidon`, you can use the `derive` method for every account by specifying your `seed` within an array (`[]`) as the first parameter.
 
 `seed` can be a string, a number, a Pubkey, or even the combination of them.
 

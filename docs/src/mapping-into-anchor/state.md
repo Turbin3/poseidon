@@ -9,7 +9,7 @@ Notice that the term **_state_** is used to describe the data stored on Solana a
 In TypeScript, custom state accounts are defined as an `Interface` that extends `Account`.
 
 ```typescript
-import { Account, Pubkey, u64, u8 } from "@3thos/poseidon";
+import { Account, Pubkey, u64, u8 } from "@solanaturbine/poseidon";
 
 export interface EscrowState extends Account {
   maker: Pubkey;
@@ -23,7 +23,7 @@ export interface EscrowState extends Account {
 }
 ```
 
-You can use types from the `@3thos/poseidon` package to define the fields of the custom state account.
+You can use types from the `@solanaturbine/poseidon` package to define the fields of the custom state account.
 
 After transpiling, the custom state account will be defined as a `struct` in Rust.
 
@@ -97,7 +97,7 @@ pub mod escrow_program {
 }
 ```
 
-Also if you want to do some arithmetic operations, `@3thos/poseidon` package provides the necessary types for that.
+Also if you want to do some arithmetic operations, `@solanaturbine/poseidon` package provides the necessary types for that.
 
 Check out [vote](../../../examples/vote/typescript/vote.ts) example to see how to use them. Here's a snippet from the example:
 

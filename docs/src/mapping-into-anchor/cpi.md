@@ -2,7 +2,7 @@
 
 When a program invokes another program, it is called a cross program invocation (CPI). This is a powerful feature of Solana that allows programs to interact with each other. This is useful when you want to separate the logic of your program into multiple programs, or when you want to reuse the logic of another program.
 
-`@3thos/poseidon` provides a few commonly used program like `TokenProgram` and `SystemProgram` for you to invoke the corresponding instructions.
+`@solanaturbine/poseidon` provides a few commonly used program like `TokenProgram` and `SystemProgram` for you to invoke the corresponding instructions.
 
 ## Invoking Token Program
 

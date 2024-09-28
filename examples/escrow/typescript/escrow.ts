@@ -1,4 +1,4 @@
-import { Account, AssociatedTokenAccount, Mint, Pubkey, Seeds, Signer, SystemAccount, TokenAccount, TokenProgram, UncheckedAccount, u64, u8 } from "@3thos/poseidon";
+import { Account, AssociatedTokenAccount, Mint, Pubkey, Seeds, Signer, SystemAccount, TokenAccount, TokenProgram, UncheckedAccount, u64, u8 } from "@solanaturbine/poseidon";
 
 export default class EscrowProgram {
     static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");

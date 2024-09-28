@@ -3,7 +3,7 @@
 In TypeScript, the program is defined as a class with a `static PROGRAM_ID` to specify the program ID.
 
 ```typescript
-import { Pubkey } from "@3thos/poseidon";
+import { Pubkey } from "@solanaturbine/poseidon";
 export default class EscrowProgram {
   static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");
 }

@@ -1,4 +1,4 @@
-import { Account, Pubkey, Result, Signer, SystemAccount, SystemProgram, UncheckedAccount, u64, u8 } from "@3thos/poseidon";
+import { Account, Pubkey, Result, Signer, SystemAccount, SystemProgram, UncheckedAccount, u64, u8 } from "@solanaturbine/poseidon";
 
 export default class VaultProgram {
     static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");

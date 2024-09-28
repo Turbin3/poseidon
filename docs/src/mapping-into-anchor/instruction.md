@@ -3,7 +3,7 @@
 To define instructions in TypeScript, you would typically define methods inside the program class.
 
 ```typescript
-import { Pubkey } from "@3thos/poseidon";
+import { Pubkey } from "@solanaturbine/poseidon";
 
 export default class EscrowProgram {
   static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");
@@ -30,7 +30,7 @@ import {
   UncheckedAccount,
   u64,
   u8,
-} from "@3thos/poseidon";
+} from "@solanaturbine/poseidon";
 
 export default class EscrowProgram {
   static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");
@@ -70,7 +70,7 @@ export default class EscrowProgram {
 }
 ```
 
-`@3thos/poseidon` package provides the necessary types for defining instructions in TypeScript, such as Rust types (`u8`, `u64`, `i8`, `i128`, `boolean`, `string`), SPL types (`Pubkey`, `AssociatedTokenAccount`, `Mint`, `TokenAccount`, `TokenProgram`), Anchor account types (`Signer`, `UncheckedAccount`, `SystemAccount`), etc.
+`@solanaturbine/poseidon` package provides the necessary types for defining instructions in TypeScript, such as Rust types (`u8`, `u64`, `i8`, `i128`, `boolean`, `string`), SPL types (`Pubkey`, `AssociatedTokenAccount`, `Mint`, `TokenAccount`, `TokenProgram`), Anchor account types (`Signer`, `UncheckedAccount`, `SystemAccount`), etc.
 
 It will transpile the TypeScript code into the following Rust code.
 
