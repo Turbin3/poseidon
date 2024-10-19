@@ -45,7 +45,7 @@ If you haven't installed all of them yet, go to [Solana Anchor Installation Guid
 ### Install Poseidon
 
 ```bash
-git clone git@github.com:3uild-3thos/poseidon.git
+git clone git@github.com:Turbin3/poseidon.git
 cd poseidon
 # Build poseidon binary file
 cargo build --release
