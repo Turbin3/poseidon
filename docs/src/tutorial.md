@@ -168,7 +168,7 @@ The final step to complete this program is to run the command below to get your 
 ```bash
 $ anchor keys list
 # You'll get something similar, but it will definitely be different
-vote: At2EEHZ4zq2roeR5Cba6dryYEsmsHz7MKt9tjUCpCng1
+vote_program: At2EEHZ4zq2roeR5Cba6dryYEsmsHz7MKt9tjUCpCng1
 ```
 
 ## Test Your Program!
