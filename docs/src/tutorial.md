@@ -93,7 +93,7 @@ $ touch src/voteProgram.ts
 Open `voteProgram.ts` in VS Code (or any IDE you prefer) and add the initial pieces of code (without the logic).
 
 ```typescript
-import { Account, Pubkey, Result, i64, u8, Signer } from "@solanaturbine/poseidon";
+import { Account, Pubkey, type Result, i64, u8, Signer } from "@solanaturbine/poseidon";
 
 export default class VoteProgram {
   static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");
