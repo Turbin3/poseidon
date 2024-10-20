@@ -218,7 +218,7 @@ Obviously, we’ll use the TypeScript code to generate and replace the Rust code
 If you’re in the root directory of the program, use the following command:
 
 ```bash
-$ poseidon -i ts-programs/src/voteProgram.ts -o programs/vote_program/src/lib.rs
+poseidon -i ts-programs/src/voteProgram.ts -o programs/vote_program/src/lib.rs
 ```
 
 Let’s replace the contents of `tests/vote_program.ts` with the code below:
@@ -275,7 +275,7 @@ describe("vote program", () => {
 For testing it locally, we can run
 
 ```bash
-$ anchor test
+anchor test
 ```
 
 This command will build the program, start a local validator with the program deployed, and run all the tests in the `tests` folder. This is a quick way to check if your program works correctly. Ideally, you should see all your tests pass like this:
@@ -295,7 +295,7 @@ downvote tx: pTKwbkU9NTFdLaRFRTZCwuYaAHrYX44dkLAHau7GsBWvaEjsV5U6gYX59Ku6DKrXENs
 If you want to verify it on the Solana Devnet (a network for developers testing their programs), use this command:
 
 ```bash
-$ anchor test --provider.cluster devnet
+anchor test --provider.cluster devnet
 ```
 
 After all the tests have passed, you can copy the transaction IDs and verify them on [Solana’s blockchain explorer](https://explorer.solana.com/?cluster=devnet).
