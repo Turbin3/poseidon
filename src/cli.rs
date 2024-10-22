@@ -111,7 +111,7 @@ fn execute_cmd(cmd: &mut Command) {
 
 fn get_default_program_content(program_name: &str) -> String {
     format!(
-        r#"import {{ Pubkey, Result }} from "@solanaturbine/poseidon";
+        r#"import {{ Pubkey, type Result }} from "@solanaturbine/poseidon";
 
 export default class {} {{
     static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");
