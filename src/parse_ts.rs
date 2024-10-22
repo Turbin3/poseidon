@@ -8,7 +8,7 @@ use swc_common::{
 use swc_ecma_ast::Module;
 use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 
-pub fn parse_ts(input_file_name: String) -> Module {
+pub fn parse_ts(input_file_name: &String) -> Module {
     let cm: Lrc<SourceMap> = Default::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
