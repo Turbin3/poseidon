@@ -48,7 +48,6 @@ fn main() -> Result<()> {
             transpile(&module, output)?;
         }
         Commands::Init { name } => {
-            println!("Initializing project: {}", name);
             init(name);
         }
     }

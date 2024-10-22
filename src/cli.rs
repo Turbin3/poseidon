@@ -5,9 +5,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+use convert_case::{Case, Casing};
 use regex::Regex;
 
 pub fn init(name: &String) {
+    println!("Initializing project: {}", name);
+
     if !anchor_installed() {
         println!("Anchor CLI not installed. Please install it before running this command.");
         return;
@@ -55,6 +58,27 @@ pub fn init(name: &String) {
             ts_programs_src_path
         )
     });
+
+    let program_file_name = name.to_case(Case::Camel);
+
+    // Create the ts-programs src/{programName}.ts file and add default content
+    let ts_programs_src_program_path =
+        ts_programs_src_path.join(format!("{}.ts", program_file_name));
+    fs::write(
+        &ts_programs_src_program_path,
+        get_default_program_content(&name),
+    )
+    .unwrap_or_else(|_| {
+        panic!(
+            "Failed to create {} file at {:?}",
+            program_file_name, ts_programs_src_program_path
+        )
+    });
+
+    println!(
+        "\n\nSetup successful!\n\nChange to your directory and start developing:\ncd {}",
+        name
+    );
 }
 
 fn anchor_installed() -> bool {
@@ -83,4 +107,19 @@ fn execute_cmd(cmd: &mut Command) {
     for line in lines {
         println!("{}", line.unwrap());
     }
+}
+
+fn get_default_program_content(program_name: &str) -> String {
+    format!(
+        r#"import {{ Pubkey, Result }} from "@solanaturbine/poseidon";
+
+export default class {} {{
+    static PROGRAM_ID = new Pubkey("11111111111111111111111111111111");
+
+    initialize(): Result {{
+        // Write your program here
+    }}
+}}"#,
+        program_name.to_case(Case::Pascal)
+    )
 }
