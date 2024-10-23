@@ -73,24 +73,16 @@ Remember what Poseidon does for you? Here’s a quick recap:
 
 > Poseidon helps by transpiling your TypeScript code into Anchor.
 
-Let’s use `anchor-cli` to set up a scaffold, and then we can start writing our program in TypeScript.
+Let’s use `poseidon init` to set up a scaffold, and then we can start writing our program in TypeScript.
 
 ```bash
 # Feel free to switch to whereever you preferred.
 $ mkdir tutorial
 $ cd tutorial
-$ anchor init vote_program
-$ cd vote_program
-
-# Setup TypeScript program inside the repository anchor created
-$ mkdir -p ts-programs/src
-$ cd ts-programs
-$ yarn init -y
-$ yarn add @solanaturbine/poseidon
-$ touch src/voteProgram.ts
+$ poseidon init vote_program
 ```
 
-Open `voteProgram.ts` in VS Code (or any IDE you prefer) and add the initial pieces of code (without the logic).
+Open `vote_program/ts-programs/voteProgram.ts` in VS Code (or any IDE you prefer) and add the initial pieces of code (without the logic).
 
 ```typescript
 import { Account, Pubkey, type Result, i64, u8, Signer } from "@solanaturbine/poseidon";
@@ -176,14 +168,17 @@ vote_program: At2EEHZ4zq2roeR5Cba6dryYEsmsHz7MKt9tjUCpCng1
 It’s time to verify that the program works as expected! Let’s use the Poseidon command with Anchor to make the magic happen 😉 If you type `poseidon --help` in your terminal, you’ll see:
 
 ```bash
-$ poseidon --help
-Usage: poseidon --input <INPUT> --output <OUTPUT>
+poseidon --help
+Usage: poseidon <COMMAND>
+
+Commands:
+  compile  Transpile a Typescript program to a Rust program
+  init     Initializes a new workspace
+  help     Print this message or the help of the given subcommand(s)
 
 Options:
-  -i, --input <INPUT>    Input Typescript file
-  -o, --output <OUTPUT>  Output Rust file
-  -h, --help             Print help
-  -V, --version          Print version
+  -h, --help     Print help
+  -V, --version  Print version
 ```
 
 Obviously, we’ll use the TypeScript code to generate and replace the Rust code that Anchor generated for us. If you’ve followed this tutorial step-by-step, your program structure (under the `tutorial/vote_program` folder) should look like this:
@@ -218,7 +213,7 @@ Obviously, we’ll use the TypeScript code to generate and replace the Rust code
 If you’re in the root directory of the program, use the following command:
 
 ```bash
-poseidon -i ts-programs/src/voteProgram.ts -o programs/vote_program/src/lib.rs
+poseidon compile -i ts-programs/src/voteProgram.ts -o programs/vote_program/src/lib.rs
 ```
 
 Let’s replace the contents of `tests/vote_program.ts` with the code below:
