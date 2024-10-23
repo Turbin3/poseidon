@@ -79,10 +79,10 @@ Let’s use `poseidon init` to set up a scaffold, and then we can start writing 
 # Feel free to switch to whereever you preferred.
 $ mkdir tutorial
 $ cd tutorial
-$ poseidon init vote_program
+$ poseidon init vote-program
 ```
 
-Open `vote_program/ts-programs/voteProgram.ts` in VS Code (or any IDE you prefer) and add the initial pieces of code (without the logic).
+Open `vote-program/ts-programs/voteProgram.ts` in VS Code (or any IDE you prefer) and add the initial pieces of code (without the logic).
 
 ```typescript
 import { Account, Pubkey, type Result, i64, u8, Signer } from "@solanaturbine/poseidon";
