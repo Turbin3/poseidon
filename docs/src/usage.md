@@ -1,7 +1,7 @@
 # Usage
 
 ```sh
-poseidon --input "input.ts" --output "output.rs"
+poseidon compile --input "input.ts" --output "output.rs"
 ```
 
 Check out [examples](https://github.com/Turbin3/poseidon/tree/master/examples) in the repo to learn how to write Poseidon Typescript which can be transpiled to Anchor programs.
