@@ -2,14 +2,15 @@
 
 <!-- toc -->
 
-- [Overview](#overview)
-- [Environment Setup](#environment-setup)
-  - [Prerequisites](#prerequisites)
-  - [Install Poseidon](#install-poseidon)
-- [Your First Solana Program with TypeScript](#your-first-solana-program-with-typescript)
-- [Test Your Program!](#test-your-program)
-- [Thoughts & Takeaway](#thoughts--takeaway)
-- [Reference](#reference)
+- [Tutorial](#tutorial)
+  - [Overview](#overview)
+  - [Environment Setup](#environment-setup)
+    - [Prerequisites](#prerequisites)
+    - [Install Poseidon](#install-poseidon)
+  - [Your First Solana Program with TypeScript](#your-first-solana-program-with-typescript)
+  - [Test Your Program!](#test-your-program)
+  - [Thoughts \& Takeaway](#thoughts--takeaway)
+  - [Reference](#reference)
 
 <!-- tocstop -->
 
@@ -213,10 +214,16 @@ Obviously, we’ll use the TypeScript code to generate and replace the Rust code
 If you’re in the root directory of the program, use the following command:
 
 ```bash
-poseidon compile -i ts-programs/src/voteProgram.ts -o programs/vote_program/src/lib.rs
+poseidon compile -i ts-programs/src/voteProgram.ts -o programs/vote-program/src/lib.rs
 ```
 
-Let’s replace the contents of `tests/vote_program.ts` with the code below:
+Once the code is transpiled to lib.rs
+
+```bash
+anchor build
+```
+
+Let’s replace the contents of `tests/vote-program.ts` with the code below:
 
 ```typescript
 import * as anchor from "@coral-xyz/anchor";
