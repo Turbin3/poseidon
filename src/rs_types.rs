@@ -17,7 +17,7 @@ use crate::{
     errors::PoseidonError,
     ts_types::{rs_type_from_str, struct_rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_ARRAY_TYPES, STANDARD_TYPES},
 };
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, Error, Ok, Result};
 
 #[derive(Debug, Clone)]
 pub struct Ta {
@@ -419,7 +419,8 @@ impl ProgramInstruction {
             let name = id.sym.to_string();
             let snaked_name = id.sym.to_string().to_case(Case::Snake);
             let binding = type_ann.expect("Invalid type annotation");
-            let (of_type, optional) = extract_of_type(binding);
+            let (of_type, optional) = extract_of_type(binding)
+                .unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
             // TODO: Make this an actual Enum set handle it correctly
             if STANDARD_TYPES.contains(&of_type.as_str()) | STANDARD_ARRAY_TYPES.contains(&of_type.as_str()) {
@@ -1274,20 +1275,14 @@ impl ProgramInstruction {
     }
 }
 
-fn extract_kind_str(keyword_type: TsKeywordTypeKind) -> String {
+fn extract_kind_str(keyword_type: TsKeywordTypeKind) -> Result<String, Error> {
     match keyword_type {
-        TsKeywordTypeKind::TsStringKeyword => "String".to_string(),
-        TsKeywordTypeKind::TsNumberKeyword => "u64".to_string(),
-        TsKeywordTypeKind::TsBooleanKeyword => "bool".to_string(),
-        _ => "u8".to_string(),
+        TsKeywordTypeKind::TsStringKeyword => Ok("String".to_string()),
+        _ => Err(PoseidonError::KeyWordTypeNotSupported(format!("{:?}", keyword_type)).into()),
     }
 }
 
-fn extract_of_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> (String, bool) {
-
-    let of_type;
-    let optional;
-
+fn extract_of_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> Result<(String, bool), Error> {
     match binding.type_ann.as_ref() {
         TsType::TsTypeRef(_) => {
             let ident = binding
@@ -1296,8 +1291,7 @@ fn extract_of_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> (String, bool) {
                 .type_name
                 .expect_ident();
 
-            of_type = ident.sym.to_string();
-            optional = ident.optional;
+            Ok((ident.sym.to_string(), ident.optional))
         }
         TsType::TsArrayType(_) => {
             let keyword_type = binding
@@ -1307,24 +1301,24 @@ fn extract_of_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> (String, bool) {
                 .expect_ts_keyword_type()
                 .kind;
 
-            let kind_type = extract_kind_str(keyword_type);
-            of_type = format!("Vec<{}>", kind_type);
-            optional = false;
+            let kind_type = extract_kind_str(keyword_type)
+                .unwrap_or_else(|_| panic!("Keyword type {:?} is not supported", keyword_type));
+
+            Ok((format!("Vec<{}>", kind_type), false))
         }
         TsType::TsKeywordType(_) => {
             let keyword_type = binding
                 .type_ann
                 .expect_ts_keyword_type()
                 .kind;
-            of_type = extract_kind_str(keyword_type);
-            optional = false;
+
+            let kind_type = extract_kind_str(keyword_type)
+                .unwrap_or_else(|_| panic!("Keyword type {:?} is not supported", keyword_type));
+
+            Ok((kind_type, false))
         }
-        _ => {
-            of_type = "String".to_string();
-            optional = false;
-        }
+        _ => Err(PoseidonError::KeyWordTypeNotSupported(format!("{:?}", binding.type_ann.as_ref())).into()),
     }
-    (of_type, optional)
 }
 
 #[derive(Debug, Clone)]
@@ -1358,7 +1352,8 @@ impl ProgramAccount {
                 let field = f.clone().ts_property_signature().expect("Invalid property");
                 let field_name = field.key.ident().expect("Invalid property").sym.to_string();
                 let binding = field.type_ann.expect("Invalid type annotation");
-                let (field_type, _optional) = extract_of_type(binding);
+                let (field_type, _optional) = extract_of_type(binding)
+                    .unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
                 // TODO:: space of other types e.g string or move to macro InitSpace
                 match field_type.as_str() {
@@ -1377,9 +1372,7 @@ impl ProgramAccount {
                     "u8" | "i8" => {
                         space += 1;
                     }
-                    _ => {
-                        space +=100;
-                    }
+                    _ => {}
                 }
                 ProgramAccountField {
                     name: field_name,

@@ -5,6 +5,8 @@ use thiserror::*;
 pub enum PoseidonError {
     #[error("Invalid type: {0}")]
     InvalidType(String),
+    #[error("Keyword type {0} is not supported")]
+    KeyWordTypeNotSupported(String),
     #[error("expected a Member type")]
     MemberNotFound,
     #[error("expected a Expr type")]
