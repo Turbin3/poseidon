@@ -102,12 +102,18 @@ And `has` constraint allows you to check multiple accounts at once. Like in the 
 
 ### `mint` and `authority`
 
-If the account is a `TokenAccount` or an `AssociatedTokenAccount`, `.derive(mint, authority)` method is used to check if the account has the same mint as the `mint` account and the authority is the `authority` account.
+If the account is a `TokenAccount`, `.derive([seed], mint, authority)` method is used to check if the account has the same mint as the `mint` account and the authority is the `authority` account.
 
-You can use it with the `seed` and `init` constraint to derive and initialize a new `TokenAccount`, like `vault` account in the `make` method.
+You can use it with the `init` constraint to derive and initialize a new `TokenAccount`, like `vault` account in the `make` method.
 
 ```typescript
 vault.derive(["vault", escrow.key], makerMint, auth.key).init();
+```
+
+For accounts of type `AssociatedTokenAccount`, `.derive(mint, authority)` is used instead.
+
+```typescript
+vault.derive(makerMint, auth.key).initIfNeeded();
 ```
 
 [^note]: Check the [Anchor documentation](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html#constraints) for more information on constraints.
