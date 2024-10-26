@@ -4,9 +4,9 @@ Now you can write solana programs in Typescript
 
 poseidon is a transpiler that helps you to convert your Typescript solana programs to anchor. Which is especially convenient for people who are just getting started with solana.
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [Quick Start & Examples](#quick-start--examples)
+- [Installation](https://poseidon.turbin3.com/installation.html)
+- [Usage](https://poseidon.turbin3.com/usage.html)
+- [Quick Start & Examples](https://poseidon.turbin3.com/tutorial.html)
 
 ## Installation
 
