@@ -2,9 +2,11 @@ use convert_case::{Case, Casing};
 use core::panic;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{format_ident, quote};
+use std::io;
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    io::{stdin, stdout},
 };
 use swc_common::{util::move_map::MoveMap, TypeEq};
 use swc_ecma_ast::{
@@ -43,7 +45,7 @@ pub struct InstructionAccount {
     pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<TokenStream>,
     pub payer: Option<String>,
-    pub space: Option<u16>,
+    pub space: Option<u32>,
 }
 
 impl InstructionAccount {
@@ -130,7 +132,7 @@ impl InstructionAccount {
         };
         let space = match self.space {
             Some(s) => {
-                let s_literal = Literal::u16_unsuffixed(s);
+                let s_literal = Literal::u32_unsuffixed(s);
                 quote! {space = #s_literal,}
             }
             None => {
@@ -419,17 +421,18 @@ impl ProgramInstruction {
             let name = id.sym.to_string();
             let snaked_name = id.sym.to_string().to_case(Case::Snake);
             let binding = type_ann.expect("Invalid type annotation");
-            let (of_type, optional) = extract_type(binding)
-                .unwrap_or_else(|_| panic!("Keyword type is not supported"));
+            let (of_type, optional) =
+                extract_type(binding).unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
-            // TODO: Make this an actual Enum set handle it correctly
-            if STANDARD_TYPES.contains(&of_type.as_str()) | STANDARD_ARRAY_TYPES.contains(&of_type.as_str()) {
+            if STANDARD_TYPES.contains(&of_type.as_str())
+                | STANDARD_ARRAY_TYPES.contains(&of_type.as_str())
+            {
                 let rs_type = rs_type_from_str(&of_type)
-                        .unwrap_or_else(|_| panic!("Invalid type: {}", of_type));
+                    .unwrap_or_else(|_| panic!("Invalid type: {}", of_type));
                 ix_arguments.push(InstructionArgument {
                     name: snaked_name,
                     of_type: quote!(
-                        #rs_type, 
+                        #rs_type,
                     ),
                     optional,
                 })
@@ -1278,13 +1281,6 @@ impl ProgramInstruction {
     }
 }
 
-// fn extract_kind_str(keyword_type: TsKeywordTypeKind) -> Result<String, Error> {
-//     match keyword_type {
-//         TsKeywordTypeKind::TsStringKeyword => Ok("String".to_string()),
-//         _ => Err(PoseidonError::KeyWordTypeNotSupported(format!("{:?}", keyword_type)).into()),
-//     }
-// }
-
 fn extract_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> Result<(String, bool), Error> {
     match binding.type_ann.as_ref() {
         TsType::TsTypeRef(_) => {
@@ -1309,18 +1305,11 @@ fn extract_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> Result<(String, bool),
 
             Ok((format!("Vec<{}>", array_elem_type), false))
         }
-        // TsType::TsKeywordType(_) => {
-        //     let keyword_type = binding
-        //         .type_ann
-        //         .expect_ts_keyword_type()
-        //         .kind;
-
-        //     let kind_type = extract_kind_str(keyword_type)
-        //         .unwrap_or_else(|_| panic!("Keyword type {:?} is not supported", keyword_type));
-
-        //     Ok((kind_type, false))
-        // }
-        _ => Err(PoseidonError::KeyWordTypeNotSupported(format!("{:?}", binding.type_ann.as_ref())).into()),
+        _ => Err(PoseidonError::KeyWordTypeNotSupported(format!(
+            "{:?}",
+            binding.type_ann.as_ref()
+        ))
+        .into()),
     }
 }
 
@@ -1334,7 +1323,7 @@ pub struct ProgramAccountField {
 pub struct ProgramAccount {
     pub name: String,
     pub fields: Vec<ProgramAccountField>,
-    pub space: u16,
+    pub space: u32,
 }
 
 impl ProgramAccount {
@@ -1346,7 +1335,7 @@ impl ProgramAccount {
             _ => panic!("Custom accounts must extend Account type"),
         }
         let name: String = interface.id.sym.to_string();
-        let mut space: u16 = 8; // anchor discriminator
+        let mut space: u32 = 8; // anchor discriminator
         let fields: Vec<ProgramAccountField> = interface
             .body
             .body
@@ -1358,25 +1347,36 @@ impl ProgramAccount {
                 let (field_type, _optional) = extract_type(binding)
                     .unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
-                // TODO:: space of other types e.g string or move to macro InitSpace
-                match field_type.as_str() {
-                    "Pubkey" => {
-                        space += 32;
-                    }
-                    "u64" | "i64" => {
-                        space += 8;
-                    }
-                    "u32" | "i32" => {
-                        space += 4;
-                    }
-                    "u16" | "i16" => {
-                        space += 2;
-                    }
-                    "u8" | "i8" => {
-                        space += 1;
-                    }
-                    _ => {}
+                let mut len: u32 = 1;
+
+                if field_type.contains("Vec") | field_type.contains("String") {
+                    space += 4;
+
+                    println!("\nEnter the length for {}", field_type);
+                    let mut user_input_len = String::new();
+                    io::stdin()
+                        .read_line(&mut user_input_len)
+                        .expect("enter only a number");
+                    len = user_input_len
+                        .trim()
+                        .parse::<u32>()
+                        .expect("input a valid number in u32 range");
                 }
+
+                if field_type.contains("Pubkey") {
+                    space += 32 * len;
+                } else if field_type.contains("u64") | field_type.contains("u64") {
+                    space += 8 * len;
+                } else if field_type.contains("u32") | field_type.contains("i32") {
+                    space += 4 * len;
+                } else if field_type.contains("u16") | field_type.contains("i16") {
+                    space += 2 * len;
+                } else if field_type.contains("u8") | field_type.contains("i8") {
+                    space += 1 * len;
+                } else if field_type.contains("String") {
+                    space += len;
+                }
+
                 ProgramAccountField {
                     name: field_name,
                     of_type: field_type.to_string(),
@@ -1403,7 +1403,7 @@ impl ProgramAccount {
                 );
 
                 let field_type = rs_type_from_str(&field.of_type)
-                        .unwrap_or_else(|_| panic!("Invalid type: {}", field.of_type));
+                    .unwrap_or_else(|_| panic!("Invalid type: {}", field.of_type));
 
                 quote! { pub #field_name: #field_type }
             })
