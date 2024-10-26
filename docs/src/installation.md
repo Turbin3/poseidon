@@ -2,7 +2,15 @@
 
 Make sure you have Rust and Cargo installed
 
-Clone the repository:
+### Installing with Cargo
+
+```sh
+cargo install --git  https://github.com/Turbin3/poseidon
+```
+
+That's it, you're done!
+
+### Installing from source
 
 ```sh
 git clone https://github.com/Turbin3/poseidon
