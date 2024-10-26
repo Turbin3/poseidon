@@ -2,7 +2,7 @@ use anyhow::{Error, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
 
-pub const STANDARD_TYPES: [&str; 17] = [
+pub const STANDARD_TYPES: [&str; 16] = [
     "u8",
     "i8",
     "u16",
@@ -17,12 +17,11 @@ pub const STANDARD_TYPES: [&str; 17] = [
     "isize",
     "boolean",
     "Uint8Array",
-    "string",
     "String",
     "Pubkey",
 ];
 
-pub const STANDARD_ARRAY_TYPES: [&str; 2] = ["Vec<string>", "Vec<String>"];
+pub const STANDARD_ARRAY_TYPES: [&str; 1] = ["Vec<String>"];
 
 pub const STANDARD_ACCOUNT_TYPES: [&str; 7] = [
     "Signer",
@@ -60,32 +59,9 @@ use crate::errors::PoseidonError;
 //         _ => str.to_string()
 //     }
 // }
+
+
 pub fn rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
-    match str {
-        "string" | "String" => Ok(quote! { String, }),
-        "Vec<string>" | "Vec<String>" => Ok(quote! { Vec<String>, }),
-        "u8" => Ok(quote! { u8, }),
-        "i8" => Ok(quote! { i8, }),
-        "u16" => Ok(quote! { u16, }),
-        "i16" => Ok(quote! { i16, }),
-        "u32" => Ok(quote! { u32, }),
-        "i32" => Ok(quote! { i32, }),
-        "u64" => Ok(quote! { u64, }),
-        "i64" => Ok(quote! { i64, }),
-        "u128" => Ok(quote! { u128, }),
-        "i128" => Ok(quote! { i128, }),
-        "usize" => Ok(quote! { usize, }),
-        "isize" => Ok(quote! { isize, }),
-        "boolean" => Ok(quote! { bool, }),
-        "Pubkey" => Ok(quote! { Pubkey, }),
-        "Uint8Array" => Ok(quote! { Vec<u8>, }),
-        // "Signer" => Ok(quote!{Signer}),
-        _ => Err(PoseidonError::InvalidType(str.to_string()))?,
-    }
-}
-
-
-pub fn struct_rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
     match str {
         "string" | "String" => Ok(quote! { String }),
         "Vec<string>" | "Vec<String>" => Ok(quote! { Vec<String> }),
