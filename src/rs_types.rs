@@ -410,7 +410,6 @@ impl ProgramInstruction {
             .ok_or(PoseidonError::IdentNotFound)?
             .sym
             .to_string();
-        // println!("{}",name);
         let mut ix: ProgramInstruction = ProgramInstruction::new(name);
         // Get accounts and args
         let mut ix_accounts: HashMap<String, InstructionAccount> = HashMap::new();
@@ -545,7 +544,6 @@ impl ProgramInstruction {
             ?.stmts
             .iter()
             .map(|s| {
-                // println!("start : {:#?}", s);
                 match s.clone() {
                     Stmt::Expr(e) => {
                         let s = e.expr;
@@ -1352,7 +1350,7 @@ impl ProgramAccount {
                 if field_type.contains("Vec") | field_type.contains("String") {
                     space += 4;
 
-                    println!("\nEnter the length for {}", field_type);
+                    println!(r##"Enter the length for "{}" of type "{}" in "{}" interface"##, field_name, field_type, name);
                     let mut user_input_len = String::new();
                     io::stdin()
                         .read_line(&mut user_input_len)
@@ -1361,6 +1359,7 @@ impl ProgramAccount {
                         .trim()
                         .parse::<u32>()
                         .expect("input a valid number in u32 range");
+                    println!();
                 }
 
                 if field_type.contains("Pubkey") {
