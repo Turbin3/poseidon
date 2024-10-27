@@ -1352,9 +1352,49 @@ pub fn extract_name_and_len_with_type_params(
                 .ok_or(PoseidonError::NumericLiteralNotFound)?
                 .value as u32;
 
-            ts_type = format!("Vec<{}>", vec_type_name);
+            if let Some(type_params_layer) = &type_params.params[0]
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
+                .type_params
+            {
+                let type_ident_layer = type_params
+                    .params[0]
+                    .as_ts_type_ref()
+                    .ok_or(PoseidonError::TypeReferenceNotFound)?
+                    .type_name
+                    .as_ident()
+                    .ok_or(PoseidonError::IdentNotFound)?
+                    .sym
+                    .as_ref();
 
-            length += vec_len;
+                // for multiple nesting support recursion can be used
+                // (type_name_layer, length_layer) = extract_name_and_len_with_type_params(type_ident_layer, type_params_layer)?;
+
+                if type_ident_layer == "String" {
+                    let string_length = type_params_layer.params[0]
+                        .as_ts_lit_type()
+                        .ok_or(PoseidonError::TSLiteralTypeNotFound)?
+                        .lit
+                        .as_number()
+                        .ok_or(PoseidonError::NumericLiteralNotFound)?
+                        .value as u32;
+
+                    length += vec_len*(4 + string_length);
+                    ts_type = format!("Vec<String>");
+
+                }else {
+                    return Err(
+                        PoseidonError::KeyWordTypeNotSupported(format!("{:?}", primary_type_ident)).into(),
+                    )
+                }
+   
+            } else {
+                length += vec_len;
+                ts_type = format!("Vec<{}>", vec_type_name);
+            }
+
+            
+
         }
         _ => {
             return Err(
