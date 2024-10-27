@@ -15,15 +15,15 @@ pub fn parse_ts(input_file_name: &String) -> Module {
     // Real usage
     // let fm = cm
     //     .load_file(Path::new("counter.ts"))
-    //     .expect("failed to load test.ts");
+    //     .expect("failed to load counter.ts");
 
     // let fm = cm
     //     .load_file(Path::new("vault.ts"))
-    //     .expect("failed to load test.ts");
+    //     .expect("failed to load vault.ts");
 
     let fm = cm
         .load_file(Path::new(&input_file_name))
-        .expect("failed to load test.ts");
+        .expect(&format!("failed to load {}", input_file_name));
 
     let lexer = Lexer::new(
         Syntax::Typescript(Default::default()),
