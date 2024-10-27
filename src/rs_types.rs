@@ -233,49 +233,53 @@ impl ProgramInstruction {
             instruction_attributes: None,
         }
     }
-    pub fn get_amount_from_ts_arg(amount_expr: &Expr) -> Result<TokenStream> {
-        let amount: TokenStream;
-        match amount_expr {
+    pub fn get_rs_arg_from_ts_arg(ix_accounts: &HashMap<String, InstructionAccount>, ts_arg_expr: &Expr) -> Result<TokenStream> {
+        let ts_arg: TokenStream;
+        match ts_arg_expr {
             Expr::Member(m) => {
-                let amount_obj = m
+                let ts_arg_obj = m
                     .obj
                     .as_ident()
                     .ok_or(PoseidonError::IdentNotFound)?
                     .sym
                     .as_ref();
-                let amount_prop = m
+                let ts_arg_prop = m
                     .prop
                     .as_ident()
                     .ok_or(PoseidonError::IdentNotFound)?
                     .sym
                     .as_ref();
-                let amount_obj_ident = Ident::new(
-                    &amount_obj.to_case(Case::Snake),
+                let ts_arg_obj_ident = Ident::new(
+                    &ts_arg_obj.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                let amount_prop_ident = Ident::new(
-                    &amount_prop.to_case(Case::Snake),
+                let ts_arg_prop_ident = Ident::new(
+                    &ts_arg_prop.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                amount = quote! {
-                    ctx.accounts.#amount_obj_ident.#amount_prop_ident
-                };
+                if let Some(_cur_ix_acc) = ix_accounts.get(ts_arg_obj){
+                    ts_arg = quote! {
+                        ctx.accounts.#ts_arg_obj_ident.#ts_arg_prop_ident
+                    };
+                } else {
+                    panic!("{:#?} not provided in proper format", ts_arg_expr)
+                }
             }
             Expr::Ident(i) => {
-                let amount_str = i.sym.as_ref();
-                let amount_ident = Ident::new(
-                    &amount_str.to_case(Case::Snake),
+                let ts_arg_str = i.sym.as_ref();
+                let ts_arg_ident = Ident::new(
+                    &ts_arg_str.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                amount = quote! {
-                    #amount_ident
+                ts_arg = quote! {
+                    #ts_arg_ident
                 };
             }
             _ => {
-                panic!("amount not  provided in proper format")
+                panic!("{:#?} not provided in proper format", ts_arg_expr)
             }
         }
-        Ok(amount)
+        Ok(ts_arg)
     }
     pub fn get_seeds(&mut self, seeds: &Vec<Option<ExprOrSpread>>) -> Result<Vec<TokenStream>> {
         let mut seeds_token: Vec<TokenStream> = vec![];
@@ -489,6 +493,8 @@ impl ProgramInstruction {
                     ix.uses_token_program = true;
 
                     program_mod.add_import("anchor_spl", "associated_token", "AssociatedToken");
+                    program_mod.add_import("anchor_spl", "token", "TokenAccount");
+                    program_mod.add_import("anchor_spl", "token", "Token");
                 } else if of_type == "Mint" {
                     ix_accounts.insert(
                         name.clone(),
@@ -646,7 +652,7 @@ impl ProgramInstruction {
                                             cur_ix_acc.is_mut = true;
                                         }
                                         if cur_ix_acc.type_str != "AssociatedTokenAccount"{
-                                            let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
+                                            let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                             let seeds_token = ix.get_seeds(seeds)?;
                                             cur_ix_acc.bump = Some(quote!{
                                                 bump
@@ -708,7 +714,7 @@ impl ProgramInstruction {
                                         let from_acc_ident = Ident::new(from_acc, proc_macro2::Span::call_site());
                                         let to_acc_ident = Ident::new(to_acc, proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[2].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                        let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some(){
                                                 ix_body.push(quote!{
@@ -762,7 +768,7 @@ impl ProgramInstruction {
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[3].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                        let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some() {
                                                 ix_body.push(quote!{
@@ -793,6 +799,8 @@ impl ProgramInstruction {
                                         }
                                         },
                                         "burn" => {
+                                            program_mod.add_import("anchor_spl", "token", "burn");
+                                            program_mod.add_import("anchor_spl", "token", "Burn");
                                             let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let from_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -800,7 +808,7 @@ impl ProgramInstruction {
                                             let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
 
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new(
@@ -816,6 +824,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "mintTo" => {
+                                            program_mod.add_import("anchor_spl", "token", "mint_to");
+                                            program_mod.add_import("anchor_spl", "token", "MintTo");
                                             let mint_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -823,7 +833,7 @@ impl ProgramInstruction {
                                             let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new_with_signer(
                                                     ctx.accounts.token_program.to_account_info(),
@@ -838,6 +848,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "approve" => {
+                                            program_mod.add_import("anchor_spl", "token", "approve");
+                                            program_mod.add_import("anchor_spl", "token", "Approve");
                                             let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let delegate_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -845,7 +857,7 @@ impl ProgramInstruction {
                                             let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new(
                                                     ctx.accounts.token_program.to_account_info(),
@@ -860,6 +872,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "approveChecked" => {
+                                              program_mod.add_import("anchor_spl", "token", "approve_checked");
+                                              program_mod.add_import("anchor_spl", "token", "ApproveChecked");
                                             let to_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let delegate_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -871,7 +885,9 @@ impl ProgramInstruction {
                                             let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[4].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let decimal_expr = &c.args[5].expr;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                            let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new(
                                                     ctx.accounts.token_program.to_account_info(),
@@ -883,10 +899,12 @@ impl ProgramInstruction {
                                                     },
                                                 );
 
-                                                approve_checked(cpi_ctx, #amount)?;
+                                                approve_checked(cpi_ctx, #amount, #decimal)?;
                                             })
                                         },
                                         "closeAccount" => {
+                                            program_mod.add_import("anchor_spl", "token", "close_account");
+                                            program_mod.add_import("anchor_spl", "token", "CloseAccount");
                                             let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let destination_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -907,6 +925,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "freezeAccount" => {
+                                            program_mod.add_import("anchor_spl", "token", "freeze_account");
+                                            program_mod.add_import("anchor_spl", "token", "FreezeAccount");
                                             let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -927,6 +947,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "initializeAccount" => {
+                                            program_mod.add_import("anchor_spl", "token", "initialize_account3");
+                                            program_mod.add_import("anchor_spl", "token", "InitializeAccount3");
                                             let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -947,6 +969,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "revoke" => {
+                                            program_mod.add_import("anchor_spl", "token", "revoke");
+                                            program_mod.add_import("anchor_spl", "token", "Revoke");
                                             let source_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let source_acc_ident = Ident::new(&source_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
@@ -964,6 +988,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "syncNative" => {
+                                            program_mod.add_import("anchor_spl", "token", "sync_native");
+                                            program_mod.add_import("anchor_spl", "token", "SyncNative");
                                             let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             ix_body.push(quote!{
@@ -978,6 +1004,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "thawAccount" => {
+                                            program_mod.add_import("anchor_spl", "token", "thaw_account");
+                                            program_mod.add_import("anchor_spl", "token", "ThawAccount");
                                             let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let auth_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -999,6 +1027,8 @@ impl ProgramInstruction {
                                             })
                                         },
                                         "transferChecked" => {
+                                            program_mod.add_import("anchor_spl", "token", "transfer_checked");
+                                            program_mod.add_import("anchor_spl", "token", "TransferChecked");
                                             let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let mint_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let to_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -1008,7 +1038,9 @@ impl ProgramInstruction {
                                             let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[4].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let decimal_expr = &c.args[5].expr;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                            let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     ix_body.push(quote!{
@@ -1024,7 +1056,7 @@ impl ProgramInstruction {
                                                         ];
                                                         let binding = [&signer_seeds[..]];
                                                         let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
-                                                        transfer_checked(ctx, #amount)?;
+                                                        transfer_checked(ctx, #amount, #decimal)?;
                                                     });
                                                 } else {
                                                     ix_body.push(quote!{
@@ -1035,7 +1067,7 @@ impl ProgramInstruction {
                                                             authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                         };
                                                         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-                                                        transfer_checked(cpi_ctx, #amount)?;
+                                                        transfer_checked(cpi_ctx, #amount, #decimal)?;
                                                     })
                                                 }
                                             }
@@ -1206,7 +1238,7 @@ impl ProgramInstruction {
                 Ok(())
             }).collect::<Result<Vec<()>>>()?;
 
-        ix.accounts = ix_accounts.into_values().collect();
+            ix.accounts = ix_accounts.into_values().collect();
         ix.body = ix_body;
 
         Ok(ix)
