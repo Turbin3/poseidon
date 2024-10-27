@@ -12,15 +12,6 @@ pub fn parse_ts(input_file_name: &String) -> Module {
     let cm: Lrc<SourceMap> = Default::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
-    // Real usage
-    // let fm = cm
-    //     .load_file(Path::new("counter.ts"))
-    //     .expect("failed to load counter.ts");
-
-    // let fm = cm
-    //     .load_file(Path::new("vault.ts"))
-    //     .expect("failed to load vault.ts");
-
     let fm = cm
         .load_file(Path::new(&input_file_name))
         .expect(&format!("failed to load {}", input_file_name));
