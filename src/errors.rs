@@ -5,6 +5,8 @@ use thiserror::*;
 pub enum PoseidonError {
     #[error("Invalid type: {0}")]
     InvalidType(String),
+    #[error("Keyword type {0} is not supported")]
+    KeyWordTypeNotSupported(String),
     #[error("expected a Member type")]
     MemberNotFound,
     #[error("expected a Expr type")]
@@ -15,4 +17,12 @@ pub enum PoseidonError {
     ArrayNotFound,
     #[error("expected a Call type")]
     CallNotFound,
+    #[error("expected a type reference")]
+    TypeReferenceNotFound,
+    #[error("expected a TS literal type")]
+    TSLiteralTypeNotFound,
+    #[error("expected a numeric literal for TS literal type")]
+    NumericLiteralNotFound,
+    #[error("expected a Atom type")]
+    AtomNotFound,
 }

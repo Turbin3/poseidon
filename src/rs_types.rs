@@ -2,22 +2,26 @@ use convert_case::{Case, Casing};
 use core::panic;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{format_ident, quote};
+use std::io;
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    io::{stdin, stdout},
 };
 use swc_common::{util::move_map::MoveMap, TypeEq};
 use swc_ecma_ast::{
     BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
-    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl,
+    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType,
+    TsTypeParamInstantiation, TsTypeRef,
 };
 use swc_ecma_parser::token::Token;
 
+use crate::ts_types;
 use crate::{
     errors::PoseidonError,
-    ts_types::{rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_TYPES},
+    ts_types::{rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_ARRAY_TYPES, STANDARD_TYPES},
 };
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, Error, Ok, Result};
 
 #[derive(Debug, Clone)]
 pub struct Ta {
@@ -43,7 +47,7 @@ pub struct InstructionAccount {
     pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<TokenStream>,
     pub payer: Option<String>,
-    pub space: Option<u16>,
+    pub space: Option<u32>,
 }
 
 impl InstructionAccount {
@@ -130,7 +134,7 @@ impl InstructionAccount {
         };
         let space = match self.space {
             Some(s) => {
-                let s_literal = Literal::u16_unsuffixed(s);
+                let s_literal = Literal::u32_unsuffixed(s);
                 quote! {space = #s_literal,}
             }
             None => {
@@ -408,7 +412,6 @@ impl ProgramInstruction {
             .ok_or(PoseidonError::IdentNotFound)?
             .sym
             .to_string();
-        // println!("{}",name);
         let mut ix: ProgramInstruction = ProgramInstruction::new(name);
         // Get accounts and args
         let mut ix_accounts: HashMap<String, InstructionAccount> = HashMap::new();
@@ -418,21 +421,20 @@ impl ProgramInstruction {
             let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
             let name = id.sym.to_string();
             let snaked_name = id.sym.to_string().to_case(Case::Snake);
-            let ident = type_ann
-                .expect("Invalid instruction argument")
-                .type_ann
-                .expect_ts_type_ref()
-                .type_name
-                .expect_ident();
-            let of_type = ident.sym.to_string();
-            let optional = ident.optional;
+            let binding = type_ann.expect("Invalid type annotation");
+            let (of_type, _len, optional) =
+                extract_type(binding).unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
-            // TODO: Make this an actual Enum set handle it correctly
-            if STANDARD_TYPES.contains(&of_type.as_str()) {
+            if STANDARD_TYPES.contains(&of_type.as_str())
+                | STANDARD_ARRAY_TYPES.contains(&of_type.as_str())
+            {
+                let rs_type = rs_type_from_str(&of_type)
+                    .unwrap_or_else(|_| panic!("Invalid type: {}", of_type));
                 ix_arguments.push(InstructionArgument {
                     name: snaked_name,
-                    of_type: rs_type_from_str(&of_type)
-                        .unwrap_or_else(|_| panic!("Invalid type: {}", of_type)),
+                    of_type: quote!(
+                        #rs_type,
+                    ),
                     optional,
                 })
             } else if STANDARD_ACCOUNT_TYPES.contains(&of_type.as_str()) {
@@ -544,7 +546,6 @@ impl ProgramInstruction {
             ?.stmts
             .iter()
             .map(|s| {
-                // println!("start : {:#?}", s);
                 match s.clone() {
                     Stmt::Expr(e) => {
                         let s = e.expr;
@@ -1280,6 +1281,131 @@ impl ProgramInstruction {
     }
 }
 
+fn extract_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> Result<(String, u32, bool), Error> {
+    let ts_type: String;
+    let length: u32;
+    match binding.type_ann.as_ref() {
+        TsType::TsTypeRef(_) => {
+            let ident = binding
+                .type_ann
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
+                .type_name
+                .as_ident()
+                .ok_or(PoseidonError::IdentNotFound)?;
+
+            if let Some(type_params) = &binding
+                .type_ann
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
+                .type_params
+            {
+                (ts_type, length) =
+                    extract_name_and_len_with_type_params(ident.sym.as_ref(), type_params)?;
+            } else {
+                ts_type = String::from(ident.sym.to_string());
+                length = 1;
+            }
+
+            Ok((ts_type, length, ident.optional))
+        }
+        _ => Err(PoseidonError::KeyWordTypeNotSupported(format!(
+            "{:?}",
+            binding.type_ann.as_ref()
+        ))
+        .into()),
+    }
+}
+
+pub fn extract_name_and_len_with_type_params(
+    primary_type_ident: &str,
+    type_params: &Box<TsTypeParamInstantiation>,
+) -> Result<(String, u32), Error> {
+    let ts_type: String;
+    let mut length: u32 = 0;
+    match primary_type_ident {
+        "String" => {
+            length += type_params.params[0]
+                .as_ts_lit_type()
+                .ok_or(PoseidonError::TSLiteralTypeNotFound)?
+                .lit
+                .as_number()
+                .ok_or(PoseidonError::NumericLiteralNotFound)?
+                .value as u32;
+            ts_type = String::from("String");
+        }
+        "Vec" => {
+            let vec_type_name = type_params.params[0]
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
+                .type_name
+                .as_ident()
+                .ok_or(PoseidonError::IdentNotFound)?
+                .sym
+                .to_string();
+
+            let vec_len = type_params.params[1]
+                .as_ts_lit_type()
+                .ok_or(PoseidonError::TSLiteralTypeNotFound)?
+                .lit
+                .as_number()
+                .ok_or(PoseidonError::NumericLiteralNotFound)?
+                .value as u32;
+
+            if let Some(type_params_layer) = &type_params.params[0]
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
+                .type_params
+            {
+                let type_ident_layer = type_params
+                    .params[0]
+                    .as_ts_type_ref()
+                    .ok_or(PoseidonError::TypeReferenceNotFound)?
+                    .type_name
+                    .as_ident()
+                    .ok_or(PoseidonError::IdentNotFound)?
+                    .sym
+                    .as_ref();
+
+                // for multiple nesting support recursion can be used
+                // (type_name_layer, length_layer) = extract_name_and_len_with_type_params(type_ident_layer, type_params_layer)?;
+
+                if type_ident_layer == "String" {
+                    let string_length = type_params_layer.params[0]
+                        .as_ts_lit_type()
+                        .ok_or(PoseidonError::TSLiteralTypeNotFound)?
+                        .lit
+                        .as_number()
+                        .ok_or(PoseidonError::NumericLiteralNotFound)?
+                        .value as u32;
+
+                    length += vec_len*(4 + string_length);
+                    ts_type = format!("Vec<String>");
+
+                }else {
+                    return Err(
+                        PoseidonError::KeyWordTypeNotSupported(format!("{:?}", primary_type_ident)).into(),
+                    )
+                }
+   
+            } else {
+                length += vec_len;
+                ts_type = format!("Vec<{}>", vec_type_name);
+            }
+
+            
+
+        }
+        _ => {
+            return Err(
+                PoseidonError::KeyWordTypeNotSupported(format!("{:?}", primary_type_ident)).into(),
+            )
+        }
+    }
+
+    Ok((ts_type, length))
+}
+
 #[derive(Debug, Clone)]
 pub struct ProgramAccountField {
     pub name: String,
@@ -1290,7 +1416,7 @@ pub struct ProgramAccountField {
 pub struct ProgramAccount {
     pub name: String,
     pub fields: Vec<ProgramAccountField>,
-    pub space: u16,
+    pub space: u32,
 }
 
 impl ProgramAccount {
@@ -1302,7 +1428,7 @@ impl ProgramAccount {
             _ => panic!("Custom accounts must extend Account type"),
         }
         let name: String = interface.id.sym.to_string();
-        let mut space: u16 = 8; // anchor discriminator
+        let mut space: u32 = 8; // anchor discriminator
         let fields: Vec<ProgramAccountField> = interface
             .body
             .body
@@ -1311,34 +1437,29 @@ impl ProgramAccount {
                 let field = f.clone().ts_property_signature().expect("Invalid property");
                 let field_name = field.key.ident().expect("Invalid property").sym.to_string();
                 let binding = field.type_ann.expect("Invalid type annotation");
-                let field_type: &str = binding
-                    .type_ann
-                    .as_ts_type_ref()
-                    .expect("Invalid type ref")
-                    .type_name
-                    .as_ident()
-                    .expect("Invalid ident")
-                    .sym
-                    .as_ref();
+                let (field_type, len, _optional) = extract_type(binding)
+                    .unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
-                match field_type {
-                    "Pubkey" => {
-                        space += 32;
-                    }
-                    "u64" | "i64" => {
-                        space += 8;
-                    }
-                    "u32" | "i32" => {
-                        space += 4;
-                    }
-                    "u16" | "i16" => {
-                        space += 2;
-                    }
-                    "u8" | "i8" => {
-                        space += 1;
-                    }
-                    _ => {}
+                if field_type.contains("Vec") | field_type.contains("String") {
+                    space += 4;
                 }
+
+                if field_type.contains("Pubkey") {
+                    space += 32 * len;
+                } else if field_type.contains("u64") | field_type.contains("u64") {
+                    space += 8 * len;
+                } else if field_type.contains("u32") | field_type.contains("i32") {
+                    space += 4 * len;
+                } else if field_type.contains("u16") | field_type.contains("i16") {
+                    space += 2 * len;
+                } else if field_type.contains("u8") | field_type.contains("i8") {
+                    space += 1 * len;
+                } else if field_type.contains("String") {
+                    space += len;
+                } else if field_type.contains("Boolean") {
+                    space += len;
+                }
+
                 ProgramAccountField {
                     name: field_name,
                     of_type: field_type.to_string(),
@@ -1363,10 +1484,10 @@ impl ProgramAccount {
                     &field.name.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                let field_type: Ident = Ident::new(
-                    field.of_type.split('#').next().unwrap_or(""),
-                    proc_macro2::Span::call_site(),
-                );
+
+                let field_type = rs_type_from_str(&field.of_type)
+                    .unwrap_or_else(|_| panic!("Invalid type: {}", field.of_type));
+
                 quote! { pub #field_name: #field_type }
             })
             .collect();
