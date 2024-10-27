@@ -229,49 +229,53 @@ impl ProgramInstruction {
             instruction_attributes: None,
         }
     }
-    pub fn get_amount_from_ts_arg(amount_expr: &Expr) -> Result<TokenStream> {
-        let amount: TokenStream;
-        match amount_expr {
+    pub fn get_rs_arg_from_ts_arg(ix_accounts: &HashMap<String, InstructionAccount>, ts_arg_expr: &Expr) -> Result<TokenStream> {
+        let ts_arg: TokenStream;
+        match ts_arg_expr {
             Expr::Member(m) => {
-                let amount_obj = m
+                let ts_arg_obj = m
                     .obj
                     .as_ident()
                     .ok_or(PoseidonError::IdentNotFound)?
                     .sym
                     .as_ref();
-                let amount_prop = m
+                let ts_arg_prop = m
                     .prop
                     .as_ident()
                     .ok_or(PoseidonError::IdentNotFound)?
                     .sym
                     .as_ref();
-                let amount_obj_ident = Ident::new(
-                    &amount_obj.to_case(Case::Snake),
+                let ts_arg_obj_ident = Ident::new(
+                    &ts_arg_obj.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                let amount_prop_ident = Ident::new(
-                    &amount_prop.to_case(Case::Snake),
+                let ts_arg_prop_ident = Ident::new(
+                    &ts_arg_prop.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                amount = quote! {
-                    ctx.accounts.#amount_obj_ident.#amount_prop_ident
-                };
+                if let Some(_cur_ix_acc) = ix_accounts.get(ts_arg_obj){
+                    ts_arg = quote! {
+                        ctx.accounts.#ts_arg_obj_ident.#ts_arg_prop_ident
+                    };
+                } else {
+                    panic!("{:#?} not provided in proper format", ts_arg_expr)
+                }
             }
             Expr::Ident(i) => {
-                let amount_str = i.sym.as_ref();
-                let amount_ident = Ident::new(
-                    &amount_str.to_case(Case::Snake),
+                let ts_arg_str = i.sym.as_ref();
+                let ts_arg_ident = Ident::new(
+                    &ts_arg_str.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                amount = quote! {
-                    #amount_ident
+                ts_arg = quote! {
+                    #ts_arg_ident
                 };
             }
             _ => {
-                panic!("amount not  provided in proper format")
+                panic!("{:#?} not provided in proper format", ts_arg_expr)
             }
         }
-        Ok(amount)
+        Ok(ts_arg)
     }
     pub fn get_seeds(&mut self, seeds: &Vec<Option<ExprOrSpread>>) -> Result<Vec<TokenStream>> {
         let mut seeds_token: Vec<TokenStream> = vec![];
@@ -709,7 +713,7 @@ impl ProgramInstruction {
                                         let from_acc_ident = Ident::new(from_acc, proc_macro2::Span::call_site());
                                         let to_acc_ident = Ident::new(to_acc, proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[2].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                        let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some(){
                                                 ix_body.push(quote!{
@@ -763,7 +767,7 @@ impl ProgramInstruction {
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[3].expr;
-                                        let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                        let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some() {
                                                 ix_body.push(quote!{
@@ -803,7 +807,7 @@ impl ProgramInstruction {
                                             let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
 
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new(
@@ -828,7 +832,7 @@ impl ProgramInstruction {
                                             let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new_with_signer(
                                                     ctx.accounts.token_program.to_account_info(),
@@ -852,7 +856,7 @@ impl ProgramInstruction {
                                             let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new(
                                                     ctx.accounts.token_program.to_account_info(),
@@ -881,8 +885,8 @@ impl ProgramInstruction {
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[4].expr;
                                             let decimal_expr = &c.args[5].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
-                                            let decimal = ProgramInstruction::get_amount_from_ts_arg(decimal_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                            let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
                                             ix_body.push(quote!{
                                                 let cpi_ctx = CpiContext::new(
                                                     ctx.accounts.token_program.to_account_info(),
@@ -1034,8 +1038,8 @@ impl ProgramInstruction {
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[4].expr;
                                             let decimal_expr = &c.args[5].expr;
-                                            let amount = ProgramInstruction::get_amount_from_ts_arg(amount_expr)?;
-                                            let decimal = ProgramInstruction::get_amount_from_ts_arg(decimal_expr)?;
+                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                            let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     ix_body.push(quote!{
@@ -1233,7 +1237,7 @@ impl ProgramInstruction {
                 Ok(())
             }).collect::<Result<Vec<()>>>()?;
 
-        ix.accounts = ix_accounts.into_values().collect();
+            ix.accounts = ix_accounts.into_values().collect();
         ix.body = ix_body;
 
         Ok(ix)
