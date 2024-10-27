@@ -17,4 +17,12 @@ pub enum PoseidonError {
     ArrayNotFound,
     #[error("expected a Call type")]
     CallNotFound,
+    #[error("expected a type reference")]
+    TypeReferenceNotFound,
+    #[error("expected a TS literal type")]
+    TSLiteralTypeNotFound,
+    #[error("expected a numeric literal for TS literal type")]
+    NumericLiteralNotFound,
+    #[error("expected a Atom type")]
+    AtomNotFound,
 }

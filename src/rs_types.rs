@@ -11,10 +11,12 @@ use std::{
 use swc_common::{util::move_map::MoveMap, TypeEq};
 use swc_ecma_ast::{
     BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
-    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType, TsTypeRef,
+    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType,
+    TsTypeParamInstantiation, TsTypeRef,
 };
 use swc_ecma_parser::token::Token;
 
+use crate::ts_types;
 use crate::{
     errors::PoseidonError,
     ts_types::{rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_ARRAY_TYPES, STANDARD_TYPES},
@@ -420,7 +422,7 @@ impl ProgramInstruction {
             let name = id.sym.to_string();
             let snaked_name = id.sym.to_string().to_case(Case::Snake);
             let binding = type_ann.expect("Invalid type annotation");
-            let (of_type, optional) =
+            let (of_type, _len, optional) =
                 extract_type(binding).unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
             if STANDARD_TYPES.contains(&of_type.as_str())
@@ -1279,29 +1281,33 @@ impl ProgramInstruction {
     }
 }
 
-fn extract_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> Result<(String, bool), Error> {
+fn extract_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> Result<(String, u32, bool), Error> {
+    let ts_type: String;
+    let length: u32;
     match binding.type_ann.as_ref() {
         TsType::TsTypeRef(_) => {
             let ident = binding
                 .type_ann
-                .expect_ts_type_ref()
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
                 .type_name
-                .expect_ident();
+                .as_ident()
+                .ok_or(PoseidonError::IdentNotFound)?;
 
-            Ok((ident.sym.to_string(), ident.optional))
-        }
-        TsType::TsArrayType(_) => {
-            let array_elem_type = binding
+            if let Some(type_params) = &binding
                 .type_ann
-                .expect_ts_array_type()
-                .elem_type
-                .expect_ts_type_ref()
-                .type_name
-                .expect_ident()
-                .sym
-                .to_string();
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
+                .type_params
+            {
+                (ts_type, length) =
+                    extract_name_and_len_with_type_params(ident.sym.as_ref(), type_params)?;
+            } else {
+                ts_type = String::from(ident.sym.to_string());
+                length = 1;
+            }
 
-            Ok((format!("Vec<{}>", array_elem_type), false))
+            Ok((ts_type, length, ident.optional))
         }
         _ => Err(PoseidonError::KeyWordTypeNotSupported(format!(
             "{:?}",
@@ -1309,6 +1315,55 @@ fn extract_type(binding: Box<swc_ecma_ast::TsTypeAnn>) -> Result<(String, bool),
         ))
         .into()),
     }
+}
+
+pub fn extract_name_and_len_with_type_params(
+    primary_type_ident: &str,
+    type_params: &Box<TsTypeParamInstantiation>,
+) -> Result<(String, u32), Error> {
+    let ts_type: String;
+    let mut length: u32 = 0;
+    match primary_type_ident {
+        "String" => {
+            length += type_params.params[0]
+                .as_ts_lit_type()
+                .ok_or(PoseidonError::TSLiteralTypeNotFound)?
+                .lit
+                .as_number()
+                .ok_or(PoseidonError::NumericLiteralNotFound)?
+                .value as u32;
+            ts_type = String::from("String");
+        }
+        "Vec" => {
+            let vec_type_name = type_params.params[0]
+                .as_ts_type_ref()
+                .ok_or(PoseidonError::TypeReferenceNotFound)?
+                .type_name
+                .as_ident()
+                .ok_or(PoseidonError::IdentNotFound)?
+                .sym
+                .to_string();
+
+            let vec_len = type_params.params[1]
+                .as_ts_lit_type()
+                .ok_or(PoseidonError::TSLiteralTypeNotFound)?
+                .lit
+                .as_number()
+                .ok_or(PoseidonError::NumericLiteralNotFound)?
+                .value as u32;
+
+            ts_type = format!("Vec<{}>", vec_type_name);
+
+            length += vec_len;
+        }
+        _ => {
+            return Err(
+                PoseidonError::KeyWordTypeNotSupported(format!("{:?}", primary_type_ident)).into(),
+            )
+        }
+    }
+
+    Ok((ts_type, length))
 }
 
 #[derive(Debug, Clone)]
@@ -1342,24 +1397,11 @@ impl ProgramAccount {
                 let field = f.clone().ts_property_signature().expect("Invalid property");
                 let field_name = field.key.ident().expect("Invalid property").sym.to_string();
                 let binding = field.type_ann.expect("Invalid type annotation");
-                let (field_type, _optional) = extract_type(binding)
+                let (field_type, len, _optional) = extract_type(binding)
                     .unwrap_or_else(|_| panic!("Keyword type is not supported"));
-
-                let mut len: u32 = 1;
 
                 if field_type.contains("Vec") | field_type.contains("String") {
                     space += 4;
-
-                    println!(r##"Enter the length for "{}" of type "{}" in "{}" interface"##, field_name, field_type, name);
-                    let mut user_input_len = String::new();
-                    io::stdin()
-                        .read_line(&mut user_input_len)
-                        .expect("enter only a number");
-                    len = user_input_len
-                        .trim()
-                        .parse::<u32>()
-                        .expect("input a valid number in u32 range");
-                    println!();
                 }
 
                 if field_type.contains("Pubkey") {
@@ -1373,6 +1415,8 @@ impl ProgramAccount {
                 } else if field_type.contains("u8") | field_type.contains("i8") {
                     space += 1 * len;
                 } else if field_type.contains("String") {
+                    space += len;
+                } else if field_type.contains("Boolean") {
                     space += len;
                 }
 
