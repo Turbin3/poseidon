@@ -15,7 +15,7 @@ pub const STANDARD_TYPES: [&str; 16] = [
     "i128",
     "usize",
     "isize",
-    "boolean",
+    "Boolean",
     "Uint8Array",
     "String",
     "Pubkey",
@@ -34,7 +34,7 @@ pub const STANDARD_ARRAY_TYPES: [&str; 13] = [
     "Vec<u128>",
     "Vec<i128>",
     "Vec<Pubkey>",
-    "Vec<boolean>",
+    "Vec<Boolean>",
 ];
 
 pub const STANDARD_ACCOUNT_TYPES: [&str; 7] = [
@@ -64,7 +64,7 @@ pub fn rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
         "Vec<u128>" => Ok(quote! { Vec<u128> }),
         "Vec<i128>" => Ok(quote! { Vec<i128> }),
         "Vec<Pubkey>" => Ok(quote! { Vec<Pubkey> }),
-        "Vec<boolean>" => Ok(quote! { Vec<bool> }),
+        "Vec<Boolean>" => Ok(quote! { Vec<bool> }),
         "u8" => Ok(quote! { u8 }),
         "i8" => Ok(quote! { i8 }),
         "u16" => Ok(quote! { u16 }),
@@ -77,7 +77,7 @@ pub fn rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
         "i128" => Ok(quote! { i128 }),
         "usize" => Ok(quote! { usize }),
         "isize" => Ok(quote! { isize }),
-        "boolean" => Ok(quote! { bool }),
+        "Boolean" => Ok(quote! { bool }),
         "Pubkey" => Ok(quote! { Pubkey }),
         "Uint8Array" => Ok(quote! { Vec<u8> }),
         // "Signer" => Ok(quote!{Signer}),
