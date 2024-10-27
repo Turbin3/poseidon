@@ -153,6 +153,7 @@ downvote(state: VoteState): Result {
 ```
 
 Every time you use a PDA, you’ll need to specify its seed, but only when creating the account do you need to chain the `init()` at the end.
+When you're initializing account, Poseidon automatically adds the SystemProgram account to the  account struct. Similarly in examples given in the repo, we can see that it also automatically adds Token Program and Associated Token Program accounts.
 
 The logic for `upvote` and `downvote` is quite simple—just add or subtract by 1. The only thing to be aware of is that you need to assign the result back to where it’s stored, e.g. `state.vote`. Otherwise, the value won’t be updated after the instruction is executed.
 
