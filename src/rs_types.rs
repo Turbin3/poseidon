@@ -1350,6 +1350,8 @@ impl ProgramAccount {
                 if field_type.contains("Vec") | field_type.contains("String") {
                     space += 4;
 
+                    println!();
+                    println!("Anchor space reference: - https://www.anchor-lang.com/docs/space");
                     println!(r##"Enter the length for "{}" of type "{}" in "{}" interface"##, field_name, field_type, name);
                     let mut user_input_len = String::new();
                     io::stdin()
@@ -1360,6 +1362,19 @@ impl ProgramAccount {
                         .parse::<u32>()
                         .expect("input a valid number in u32 range");
                     println!();
+
+                    if field_type.contains("Vec<String>") {
+                        println!(r##"Enter the average length for values in "{}" of type "{}" in "{}" interface"##, field_name, field_type, name);
+                        let mut average_string_len = String::new();
+                        io::stdin()
+                            .read_line(&mut average_string_len)
+                            .expect("enter only a number");
+                        len *= average_string_len
+                            .trim()
+                            .parse::<u32>()
+                            .expect("input a valid number in u32 range");
+                        println!();
+                    }
                 }
 
                 if field_type.contains("Pubkey") {
