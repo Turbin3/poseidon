@@ -48,6 +48,7 @@ pub struct InstructionAccount {
     pub bump: Option<TokenStream>,
     pub payer: Option<String>,
     pub space: Option<u32>,
+    pub is_custom: bool,
 }
 
 impl InstructionAccount {
@@ -69,6 +70,7 @@ impl InstructionAccount {
             bump: None,
             payer: None,
             space: None,
+            is_custom: false,
         }
     }
 
@@ -163,7 +165,14 @@ impl InstructionAccount {
             has = quote! { #(#has_vec),*,};
         }
         let init_if_needed = match self.is_initifneeded {
-            true => quote! {init_if_needed, #payer,},
+            true => {
+                if self.is_custom {
+                    quote! {init_if_needed, #payer, #space}
+                } else {
+                    quote! {init_if_needed, #payer,}
+                }
+                
+            }
             false => quote! {},
         };
 
@@ -539,6 +548,7 @@ impl ProgramInstruction {
                         .expect("space for custom acc not found")
                         .space,
                 );
+                cur_ix_acc.is_custom = true;
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
