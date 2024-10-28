@@ -819,7 +819,11 @@ impl ProgramInstruction {
 
                                                     let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
 
-                                                    let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, signer_seeds);
+                                                    let cpi_ctx = CpiContext::new_with_signer(
+                                                        ctx.accounts.token_program.to_account_info(), 
+                                                        cpi_accounts, 
+                                                        signer_seeds
+                                                    );
                                                     transfer_spl(cpi_ctx, #amount)?;
                                                 });
                                             } else {
@@ -872,14 +876,13 @@ impl ProgramInstruction {
                                             let amount_expr = &c.args[3].expr;
                                             let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                             ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new_with_signer(
+                                                let cpi_ctx = CpiContext::new(
                                                     ctx.accounts.token_program.to_account_info(),
                                                     MintTo {
                                                         mint: ctx.accounts.#mint_acc_ident.to_account_info(),
                                                         to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                     },
-                                                    signer,
                                                 );
                                                 mint_to(cpi_ctx, #amount)?;
                                             })
@@ -1080,6 +1083,13 @@ impl ProgramInstruction {
                                             let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                                 if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[6].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
                                                     ix_body.push(quote!{
                                                         let cpi_accounts = TransferChecked {
                                                             from: ctx.accounts.#from_acc_ident.to_account_info(),
@@ -1087,12 +1097,12 @@ impl ProgramInstruction {
                                                             to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                             authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                         };
-                                                        let signer_seeds = &[
-                                                            &b"auth"[..],
-                                                            &[ctx.accounts.escrow.auth_bump],
-                                                        ];
-                                                        let binding = [&signer_seeds[..]];
-                                                        let ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(), 
+                                                            cpi_accounts, 
+                                                            signer_seeds
+                                                        );
                                                         transfer_checked(ctx, #amount, #decimal)?;
                                                     });
                                                 } else {
