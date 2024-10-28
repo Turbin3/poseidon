@@ -293,6 +293,7 @@ impl ProgramInstruction {
     pub fn get_seeds(&mut self, seeds: &Vec<Option<ExprOrSpread>>, is_signer_seeds: bool) -> Result<Vec<TokenStream>> {
         let mut seeds_token: Vec<TokenStream> = vec![];
         let mut ix_attribute_token: Vec<TokenStream> = vec![];
+        let mut is_bump_passed : bool = false;
         for (index, elem) in seeds.into_iter().flatten().enumerate() {
             match *(elem.expr.clone()) {
                 Expr::Lit(Lit::Str(seedstr)) => {
@@ -329,6 +330,7 @@ impl ProgramInstruction {
                         seeds_token.push(quote!{
                             &[ctx.accounts.#seed_obj_ident.#seed_prop_ident]
                         });
+                        is_bump_passed = true;
                     }
                     
                 }
@@ -365,6 +367,7 @@ impl ProgramInstruction {
                             seeds_token.push(quote! {
                                 &[ctx.bumps.#seed_obj_ident]
                             });
+                            is_bump_passed = true;
                         }
 
                         for arg in self.args.iter() {
@@ -429,6 +432,9 @@ impl ProgramInstruction {
         }
         if !ix_attribute_token.is_empty() {
             self.instruction_attributes = Some(ix_attribute_token);
+        }
+        if is_signer_seeds & !is_bump_passed {
+            panic!("Bump not passed in the signer seeds list, add it as the last element of the signer seeds list")
         }
         Ok(seeds_token)
     }
