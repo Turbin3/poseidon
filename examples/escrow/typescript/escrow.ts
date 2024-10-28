@@ -68,7 +68,7 @@ export default class EscrowProgram {
             makerAta,
             auth,
             escrow.amount,
-            ["auth", escrow.authBump.toBytes()]
+            ["auth", escrow.authBump]
         )
     }
 
@@ -111,14 +111,12 @@ export default class EscrowProgram {
             escrow.amount,
         )
 
-        let seeds: Seeds = ["auth", escrow.authBump.toBytes()];
-
         TokenProgram.transfer(
             vault,
             takerReceiveAta,
             auth,
             escrow.amount,
-            seeds
+            ["auth", escrow.authBump]
         )
     }
 }
