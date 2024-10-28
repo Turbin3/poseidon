@@ -1444,6 +1444,64 @@ impl ProgramInstruction {
                                         _ => {}
                                     }
                                 }
+                                if obj == "metadataProgram" {
+                                    match prop {
+                                        "createMetadataAccountsV3" => {
+                                            program_mod.add_import("anchor_spl", "metadata", "create_metadata_accounts_v3");
+                                            program_mod.add_import("anchor_spl", "metadata", "CreateMetdataAccountsV3");
+                                            program_mod.add_import("anchor_spl", "metadata","Metadata");
+                                            program_mod.add_import("anchor_spl", "metadata", "mpl_token_metadata::types::DataV2");
+                                            program_mod.add_import("anchor_spl", "token", "Token");
+                                            program_mod.add_import("anchor_spl", "token", "Mint");
+                                            let payer_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let update_authority_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_acc = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let metadata_acc = c.args[3].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let mint_authority_acc = c.args[4].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let rent_acc = c.args[5].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            
+                                            let payer_acc_ident = Ident::new(&payer_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let update_authority_acc_ident = Ident::new(&update_authority_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let metadata_acc_ident = Ident::new(&metadata_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            let mint_authority_acc_ident = Ident::new(&mint_authority_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                            // let decimal_expr = &c.args[5].expr;
+
+                                            // let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
+                                            // let decimal = ProgramInstruction::get_rs_hashmap_from_ts_arg(&ix_accounts, decimal_expr)?;   
+                                            //will add one with signer later 
+                                            ix_body.push(quote!{
+                                                        let token_data: DataV2 = DataV2 {
+                                                            name: metadata.name,
+                                                            symbol: metadata.symbol,
+                                                            uri: metadata.uri,
+                                                            seller_fee_basis_points: 0,
+                                                            creators: None,
+                                                            collection: None,
+                                                            uses: None,
+                                                        };
+                                                        let cpi_accounts = CreateMetadataAccountsV3 {
+                                                            payer: ctx.accounts.#payer_acc_ident.to_account_info(),
+                                                            update_authority: ctx.accounts.#update_authority_acc_ident.to_account_info(),
+                                                            mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                            metadata: ctx.accounts.#metadata_acc_ident.to_account_info(),
+                                                            mint_authority: ctx.accounts.#mint_authority_acc_ident.to_account_info(),
+                                                            system_program: ctx.accounts.system_program.to_account_info(),
+                                                            rent: ctx.accounts.rent.to_account_info(),
+                                                        };
+                                                        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                        create_metadata_accounts_v3(
+                                                            cpi_ctx, 
+                                                            token_data,
+                                                            //is_mutable,
+                                                            //update_authority_is_signer,
+
+                                                        )?;
+                                            })
+                                        }
+                                        _ => ()
+                                    }
+                                }
                             }
                             Expr::Assign(a) => {
                                 // let op = a.op;
