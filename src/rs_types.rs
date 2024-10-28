@@ -957,18 +957,45 @@ impl ProgramInstruction {
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let destination_acc_ident = Ident::new(&destination_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    CloseAccount {
-                                                        account: ctx.accounts.#acc_ident.to_account_info(),
-                                                        destination: ctx.accounts.#destination_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
-
-                                                close_account(cpi_ctx)?;
-                                            })
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let close_cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            CloseAccount {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                destination: ctx.accounts.#destination_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        close_account(close_cpi_ctx)?;
+                                                    });
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let close_cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            CloseAccount {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                destination: ctx.accounts.#destination_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        close_account(close_cpi_ctx)?;
+                                                    });
+                                                }
+                                            }
+                                            
                                         },
                                         "freezeAccount" => {
                                             program_mod.add_import("anchor_spl", "token", "freeze_account");
@@ -1087,7 +1114,7 @@ impl ProgramInstruction {
                                             let decimal_expr = &c.args[5].expr;
                                             let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                             let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
-                                            if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     let seeds = &c.args[6].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
