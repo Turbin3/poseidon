@@ -25,4 +25,6 @@ pub enum PoseidonError {
     NumericLiteralNotFound,
     #[error("expected a Atom type")]
     AtomNotFound,
+    #[error("expected a authority for the Token account")]
+    AuthorityNotFound,
 }

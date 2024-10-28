@@ -290,10 +290,10 @@ impl ProgramInstruction {
         }
         Ok(ts_arg)
     }
-    pub fn get_seeds(&mut self, seeds: &Vec<Option<ExprOrSpread>>) -> Result<Vec<TokenStream>> {
+    pub fn get_seeds(&mut self, seeds: &Vec<Option<ExprOrSpread>>, is_signer_seeds: bool) -> Result<Vec<TokenStream>> {
         let mut seeds_token: Vec<TokenStream> = vec![];
         let mut ix_attribute_token: Vec<TokenStream> = vec![];
-        for elem in seeds.into_iter().flatten() {
+        for (index, elem) in seeds.into_iter().flatten().enumerate() {
             match *(elem.expr.clone()) {
                 Expr::Lit(Lit::Str(seedstr)) => {
                     let lit_vec = Literal::byte_string(seedstr.value.as_bytes());
@@ -301,33 +301,36 @@ impl ProgramInstruction {
                     #lit_vec
                     });
                 }
-                Expr::Ident(ident_str) => {
-                    let seed_ident =
-                        Ident::new(ident_str.sym.as_ref(), proc_macro2::Span::call_site());
-                    seeds_token.push(quote! {
-                        #seed_ident
-                    });
-                }
                 Expr::Member(m) => {
-                    let seed_prop = Ident::new(
-                        m.prop
+                    let seed_prop = m.prop
                             .as_ident()
                             .ok_or(PoseidonError::IdentNotFound)?
                             .sym
-                            .as_ref(),
-                        Span::call_site(),
-                    );
-                    let seed_obj = Ident::new(
-                        m.obj
+                            .as_ref();
+
+                    let seed_prop_ident = Ident::new(&seed_prop.to_string().to_case(Case::Snake), Span::call_site());
+                    let seed_obj = m.obj
                             .as_ident()
                             .ok_or(PoseidonError::IdentNotFound)?
                             .sym
-                            .as_ref(),
-                        Span::call_site(),
-                    );
-                    seeds_token.push(quote! {
-                        #seed_obj.#seed_prop().as_ref()
-                    })
+                            .as_ref();
+                    let seed_obj_ident = Ident::new(&seed_obj.to_string().to_case(Case::Snake), Span::call_site());
+                    if seed_prop == "key"{
+                        if !is_signer_seeds {
+                            seeds_token.push(quote! {
+                                #seed_obj_ident.key().as_ref()
+                            })
+                        } else {
+                            seeds_token.push(quote!{
+                                ctx.accounts.#seed_obj_ident.to_account_info().key.as_ref()
+                            });
+                        }
+                    } else if is_signer_seeds & (seeds.len() == index+1) {
+                        seeds_token.push(quote!{
+                            &[ctx.accounts.#seed_obj_ident.#seed_prop_ident]
+                        });
+                    }
+                    
                 }
                 Expr::Call(c) => {
                     let seed_members = c
@@ -343,17 +346,24 @@ impl ProgramInstruction {
                             .ok_or(PoseidonError::IdentNotFound)?
                             .sym
                             .as_ref();
-                        let seed_obj_ident = Ident::new(seed_obj, Span::call_site());
-                        if seed_members
-                            .prop
-                            .as_ident()
-                            .ok_or(PoseidonError::IdentNotFound)?
-                            .sym
-                            .as_ref()
-                            == "toBytes"
+                        let seed_obj_ident = Ident::new(&seed_obj.to_string().to_case(Case::Snake), Span::call_site());
+                        let seed_member_prop = seed_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                        if seed_member_prop == "toBytes"
                         {
+                            if !is_signer_seeds {
+                                seeds_token.push(quote! {
+                                    #seed_obj_ident.to_le_bytes().as_ref()
+                                });
+                            } else {
+                                seeds_token.push(quote! {
+                                    &#seed_obj_ident.to_le_bytes()
+                                });
+                            }
+                            
+                        }
+                        if is_signer_seeds & (seed_member_prop == "getBump") & (seeds.len() == index+1) {
                             seeds_token.push(quote! {
-                                #seed_obj_ident.to_le_bytes().as_ref()
+                                &[ctx.bumps.#seed_obj_ident]
                             });
                         }
 
@@ -376,18 +386,19 @@ impl ProgramInstruction {
                             == "toBytes"
                         {
                             let seed_obj_ident = Ident::new(
-                                seed_members
+                                &seed_members
                                     .obj
                                     .clone()
                                     .expect_member()
                                     .obj
                                     .expect_ident()
                                     .sym
-                                    .as_ref(),
+                                    .to_string()
+                                    .to_case(Case::Snake),
                                 Span::call_site(),
                             );
                             let seed_prop_ident = Ident::new(
-                                seed_members
+                                &seed_members
                                     .obj
                                     .as_member()
                                     .ok_or(PoseidonError::MemberNotFound)?
@@ -395,12 +406,21 @@ impl ProgramInstruction {
                                     .as_ident()
                                     .ok_or(PoseidonError::IdentNotFound)?
                                     .sym
-                                    .as_ref(),
+                                    .to_string()
+                                    .to_case(Case::Snake),
                                 Span::call_site(),
                             );
-                            seeds_token.push(quote! {
-                                #seed_obj_ident.#seed_prop_ident.to_le_bytes().as_ref()
-                            })
+
+                            if !is_signer_seeds {
+                                seeds_token.push(quote! {
+                                    #seed_obj_ident.#seed_prop_ident.to_le_bytes().as_ref()
+                                })
+                            } else {
+                                seeds_token.push(quote! {
+                                    &ctx.accounts.#seed_obj_ident.#seed_prop_ident.to_le_bytes()[..]
+                                })
+                            }
+                            
                         }
                     }
                 }
@@ -663,7 +683,7 @@ impl ProgramInstruction {
                                         }
                                         if cur_ix_acc.type_str != "AssociatedTokenAccount"{
                                             let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
-                                            let seeds_token = ix.get_seeds(seeds)?;
+                                            let seeds_token = ix.get_seeds(seeds, false)?;
                                             cur_ix_acc.bump = Some(quote!{
                                                 bump
                                             });
@@ -727,24 +747,26 @@ impl ProgramInstruction {
                                         let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some(){
+                                                let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                let signer_var_token_stream = quote!{
+                                                    &[&
+                                                        [#(#seed_tokens_vec),*]
+                                                    ];
+                                                };
+                                                
                                                 ix_body.push(quote!{
                                                     let transfer_accounts = Transfer {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
                                                         to: ctx.accounts.#to_acc_ident.to_account_info()
                                                     };
 
-                                                    let seeds = &[
-                                                        b"vault",
-                                                        ctx.accounts.auth.to_account_info().key.as_ref(),
-                                                        &[ctx.accounts.state.vault_bump],
-                                                    ];
-
-                                                    let pda_signer = &[&seeds[..]];
+                                                    let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
 
                                                     let cpi_ctx = CpiContext::new_with_signer(
                                                         ctx.accounts.system_program.to_account_info(),
                                                         transfer_accounts,
-                                                        pda_signer
+                                                        signer_seeds
                                                     );
                                                     transfer(cpi_ctx, amount)?;
                                                 });
@@ -781,18 +803,23 @@ impl ProgramInstruction {
                                         let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some() {
+                                                let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                let signer_var_token_stream = quote!{
+                                                    &[&
+                                                        [#(#seed_tokens_vec),*]
+                                                    ];
+                                                };
                                                 ix_body.push(quote!{
                                                     let cpi_accounts = TransferSPL {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
                                                         to: ctx.accounts.#to_acc_ident.to_account_info(),
                                                         authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                     };
-                                                    let signer_seeds = &[
-                                                        &b"auth"[..],
-                                                        &[ctx.accounts.escrow.auth_bump],
-                                                    ];
-                                                    let binding = [&signer_seeds[..]];
-                                                    let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, &binding);
+
+                                                    let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+
+                                                    let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, signer_seeds);
                                                     transfer_spl(cpi_ctx, #amount)?;
                                                 });
                                             } else {
@@ -1248,7 +1275,7 @@ impl ProgramInstruction {
                 Ok(())
             }).collect::<Result<Vec<()>>>()?;
 
-            ix.accounts = ix_accounts.into_values().collect();
+        ix.accounts = ix_accounts.into_values().collect();
         ix.body = ix_body;
 
         Ok(ix)
