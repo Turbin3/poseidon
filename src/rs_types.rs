@@ -870,18 +870,46 @@ impl ProgramInstruction {
                                             let amount_expr = &c.args[3].expr;
                                             let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
 
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    Burn {
-                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
 
-                                                burn(cpi_ctx, #amount)?;
-                                            })
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            Burn {
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        burn(cpi_ctx, #amount)?;
+                                                    })
+
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            Burn {
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        burn(cpi_ctx, #amount)?;
+                                                    })
+                                                }
+                                            }
                                         },
                                         "mintTo" => {
                                             program_mod.add_import("anchor_spl", "token", "mint_to");
@@ -894,17 +922,44 @@ impl ProgramInstruction {
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
                                             let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    MintTo {
-                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
-                                                mint_to(cpi_ctx, #amount)?;
-                                            })
+
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            MintTo {
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+                                                        mint_to(cpi_ctx, #amount)?;
+                                                    })
+
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            MintTo {
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+                                                        mint_to(cpi_ctx, #amount)?;
+                                                    })
+                                                }
+                                            }
                                         },
                                         "approve" => {
                                             program_mod.add_import("anchor_spl", "token", "approve");
@@ -917,18 +972,45 @@ impl ProgramInstruction {
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
                                             let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    Approve {
-                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                        delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
-
-                                                approve(cpi_ctx, #amount)?;
-                                            })
+                                            
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            Approve {
+                                                                to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                                delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        approve(cpi_ctx, #amount)?;
+                                                    });
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            Approve {
+                                                                to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                                delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        approve(cpi_ctx, #amount)?;
+                                                    })
+                                                }
+                                            }
                                         },
                                         "approveChecked" => {
                                               program_mod.add_import("anchor_spl", "token", "approve_checked");
@@ -947,19 +1029,46 @@ impl ProgramInstruction {
                                             let decimal_expr = &c.args[5].expr;
                                             let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                             let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    ApproveChecked {
-                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
-                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                        delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
-
-                                                approve_checked(cpi_ctx, #amount, #decimal)?;
-                                            })
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[6].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            ApproveChecked {
+                                                                to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        approve_checked(cpi_ctx, #amount, #decimal)?;
+                                                    });
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            ApproveChecked {
+                                                                to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                delegate: ctx.accounts.#delegate_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        approve_checked(cpi_ctx, #amount, #decimal)?;
+                                                    })
+                                                }
+                                            }
                                         },
                                         "closeAccount" => {
                                             program_mod.add_import("anchor_spl", "token", "close_account");
@@ -1019,18 +1128,46 @@ impl ProgramInstruction {
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    FreezeAccount {
-                                                        account: ctx.accounts.#acc_ident.to_account_info(),
-                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
+        
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
 
-                                                freeze_account(cpi_ctx)?;
-                                            })
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            FreezeAccount {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        freeze_account(cpi_ctx)?;
+                                                    })
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            FreezeAccount {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        freeze_account(cpi_ctx)?;
+                                                    });
+                                                }
+                                            }
                                         },
                                         "initializeAccount" => {
                                             program_mod.add_import("anchor_spl", "token", "initialize_account3");
@@ -1041,18 +1178,46 @@ impl ProgramInstruction {
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    InitializeAccount3 {
-                                                        account: ctx.accounts.#acc_ident.to_account_info(),
-                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
+      
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
 
-                                                initialize_account3(cpi_ctx)?;
-                                            })
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            InitializeAccount3 {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        initialize_account3(cpi_ctx)?;
+                                                    })
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            InitializeAccount3 {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        initialize_account3(cpi_ctx)?;
+                                                    });
+                                                }
+                                            }
                                         },
                                         "revoke" => {
                                             program_mod.add_import("anchor_spl", "token", "revoke");
@@ -1061,33 +1226,86 @@ impl ProgramInstruction {
                                             let auth_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let source_acc_ident = Ident::new(&source_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    Revoke {
-                                                        source: ctx.accounts.#source_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
 
-                                                revoke(cpi_ctx)?;
-                                            })
+                                            if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[2].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
+
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            Revoke {
+                                                                source: ctx.accounts.#source_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        revoke(cpi_ctx)?;
+                                                    })
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            Revoke {
+                                                                source: ctx.accounts.#source_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        revoke(cpi_ctx)?;
+                                                    });
+                                                }
+                                            }
                                         },
                                         "syncNative" => {
                                             program_mod.add_import("anchor_spl", "token", "sync_native");
                                             program_mod.add_import("anchor_spl", "token", "SyncNative");
                                             let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    SyncNative {
-                                                        account: ctx.accounts.#acc_ident.to_account_info(),
-                                                    },
-                                                );
+   
+                                            if let Some(cur_ix_acc) = ix_accounts.get(acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[1].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
 
-                                                sync_native(cpi_ctx)?;
-                                            })
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            SyncNative {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        sync_native(cpi_ctx)?;
+                                                    })
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            SyncNative {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        sync_native(cpi_ctx)?;
+                                                    });
+                                                }
+                                            }
                                         },
                                         "thawAccount" => {
                                             program_mod.add_import("anchor_spl", "token", "thaw_account");
@@ -1099,18 +1317,45 @@ impl ProgramInstruction {
                                             let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
 
-                                            ix_body.push(quote!{
-                                                let cpi_ctx = CpiContext::new(
-                                                    ctx.accounts.token_program.to_account_info(),
-                                                    ThawAccount {
-                                                        account: ctx.accounts.#acc_ident.to_account_info(),
-                                                        mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                        authority: ctx.accounts.#auth_acc_ident.to_account_info(),
-                                                    },
-                                                );
+                                            if let Some(cur_ix_acc) = ix_accounts.get(acc){
+                                                if cur_ix_acc.seeds.is_some() {
+                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seed_tokens_vec = ix.get_seeds(seeds, true)?;
+                                                    let signer_var_token_stream = quote!{
+                                                        &[&
+                                                            [#(#seed_tokens_vec),*]
+                                                        ];
+                                                    };
 
-                                                thaw_account(cpi_ctx)?;
-                                            })
+                                                    ix_body.push(quote!{
+                                                        let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
+                                                        let cpi_ctx = CpiContext::new_with_signer(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            ThawAccount {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                            signer_seeds
+                                                        );
+        
+                                                        thaw_account(cpi_ctx)?;
+                                                    })
+                                                } else {
+                                                    ix_body.push(quote!{
+                                                        let cpi_ctx = CpiContext::new(
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            ThawAccount {
+                                                                account: ctx.accounts.#acc_ident.to_account_info(),
+                                                                mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                                authority: ctx.accounts.#auth_acc_ident.to_account_info(),
+                                                            },
+                                                        );
+        
+                                                        thaw_account(cpi_ctx)?;
+                                                    });
+                                                }
+                                            }
                                         },
                                         "transferChecked" => {
                                             program_mod.add_import("anchor_spl", "token", "transfer_checked");
