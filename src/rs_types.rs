@@ -10,9 +10,7 @@ use std::{
 };
 use swc_common::{util::move_map::MoveMap, TypeEq};
 use swc_ecma_ast::{
-    BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
-    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType,
-    TsTypeParamInstantiation, TsTypeRef,
+    BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr, NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType, TsTypeParamInstantiation, TsTypeRef
 };
 use swc_ecma_parser::token::Token;
 
@@ -1641,10 +1639,14 @@ impl ProgramInstruction {
                 pub system_program: Program<'info, System>,
             })
         }
+        let info_token_stream = match accounts.is_empty() {
+            true => quote!{},
+            false => quote!{<'info>}
+        };
         quote! {
             #[derive(Accounts)]
             #ix_attributes
-            pub struct #ctx_name<'info> {
+            pub struct #ctx_name #info_token_stream {
                 #(#accounts)*
             }
         }
