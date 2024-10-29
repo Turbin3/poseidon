@@ -739,6 +739,21 @@ impl ProgramInstruction {
                                             cur_ix_acc.has_one = has_one;
 
                                         }
+                                    } else if prop.contains("init") {
+                                        ix.uses_system_program = true;
+                                        cur_ix_acc.is_init = true;
+                                        if let Some(payer) = &ix.signer {
+                                            cur_ix_acc.payer = Some(payer.clone());
+                                        }
+                                    } else if prop.contains("initIfNeeded") {
+                                        ix.uses_system_program = true;
+                                        cur_ix_acc.is_initifneeded = true;
+                                        if let Some(payer) = &ix.signer {
+                                            cur_ix_acc.payer = Some(payer.clone());
+                                        }
+                                    } else if prop.contains("close") {
+                                        cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                        cur_ix_acc.is_mut = true;
                                     }
                                 }
                                 if obj == "SystemProgram" {
