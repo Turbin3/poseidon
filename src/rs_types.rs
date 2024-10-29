@@ -715,9 +715,7 @@ impl ProgramInstruction {
                                         if chaincall1prop == "init" {
                                             ix.uses_system_program = true;
                                             cur_ix_acc.is_init = true;
-                                            if let Some(payer) = &ix.signer {
-                                                cur_ix_acc.payer = Some(payer.clone());
-                                            }
+                                            cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                         }
                                         else if chaincall1prop == "initIfNeeded" {
                                             ix.uses_system_program = true;
@@ -742,9 +740,7 @@ impl ProgramInstruction {
                                     } else if prop.contains("init") {
                                         ix.uses_system_program = true;
                                         cur_ix_acc.is_init = true;
-                                        if let Some(payer) = &ix.signer {
-                                            cur_ix_acc.payer = Some(payer.clone());
-                                        }
+                                        cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                     } else if prop.contains("initIfNeeded") {
                                         ix.uses_system_program = true;
                                         cur_ix_acc.is_initifneeded = true;
@@ -1573,7 +1569,7 @@ impl ProgramAccount {
 
                 if field_type.contains("Pubkey") {
                     space += 32 * len;
-                } else if field_type.contains("u64") | field_type.contains("u64") {
+                } else if field_type.contains("u64") | field_type.contains("i64") {
                     space += 8 * len;
                 } else if field_type.contains("u32") | field_type.contains("i32") {
                     space += 4 * len;
