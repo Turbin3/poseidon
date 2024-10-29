@@ -78,6 +78,9 @@ impl InstructionAccount {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let of_type = &self.of_type;
         let constraints: TokenStream;
+        if self.seeds.is_none() & (self.is_close | self.is_init | self.is_initifneeded) {
+            panic!(r##"use derive or deriveWithBump while using "init" or "initIfNeeded" or "close" "##);
+        }
         let payer = match &self.payer {
             Some(s) => {
                 let payer = Ident::new(s, proc_macro2::Span::call_site());
