@@ -1558,7 +1558,7 @@ impl ProgramAccount {
 
                 if field_type.contains("Pubkey") {
                     space += 32 * len;
-                } else if field_type.contains("u64") | field_type.contains("u64") {
+                } else if field_type.contains("u64") | field_type.contains("i64") {
                     space += 8 * len;
                 } else if field_type.contains("u32") | field_type.contains("i32") {
                     space += 4 * len;
