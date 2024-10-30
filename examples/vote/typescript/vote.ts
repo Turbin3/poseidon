@@ -13,7 +13,7 @@ export default class VoteProgram {
         // where inside array we can pass string, Uint8Array, pubkey
         // we can also derive PDAs which are token account, associated token account which will be covered in vault and escrow 
         state.derive(["vote"])
-            .init() // we can initialise PDA just by chaining a init method to the derive method
+            .init(user) // we can initialise PDA just by chaining a init method to the derive method
 
         // defining properties(vote) of custom_Acc(state)
         state.vote = new i64(0)

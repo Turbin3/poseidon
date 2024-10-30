@@ -743,11 +743,11 @@ impl ProgramInstruction {
                                         ix.uses_system_program = true;
                                         cur_ix_acc.is_init = true;
                                         cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
-                                    } else if prop.contains("initIfNeeded") {
+                                    } else if prop == "initIfNeeded" {
                                         ix.uses_system_program = true;
                                         cur_ix_acc.is_initifneeded = true;
                                         cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
-                                    } else if prop.contains("close") {
+                                    } else if prop == "close" {
                                         cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                         cur_ix_acc.is_mut = true;
                                     }

@@ -21,11 +21,11 @@ export default class EscrowProgram {
 
         // Here like we mentioned in counter we are deriving a PDA for TokenAccount
         // <TokenAccount>.derive([...], <mint of the token acc>, <authority of the token acc>)
-        vault.derive(["vault", escrow.key], makerMint, auth.key).init()
+        vault.derive(["vault", escrow.key], makerMint, auth.key).init(maker)
 
         // here we can see that we are deriving using seed(u64), so we would do change it to bytes by <arg>.toBytes() which makes it consumable for derive
         escrow.derive(["escrow", maker.key, seed.toBytes()])
-            .init()
+            .init(maker)
 
         escrow.authBump = auth.getBump()
         escrow.vaultBump = vault.getBump()
@@ -88,11 +88,11 @@ export default class EscrowProgram {
         // <AssociatedTokenAccount>.derive(<mint of the token acc>, <authority of the token acc>) 
         takerAta
             .derive(makerMint, taker.key)
-            .initIfNeeded(); // if you're not sure that the Ata will exist, just chain initIfNeeded method instead of init
+            .initIfNeeded(taker); // if you're not sure that the Ata will exist, just chain initIfNeeded method instead of init
 
         takerReceiveAta
             .derive(makerMint, taker.key)
-            .initIfNeeded()
+            .initIfNeeded(taker)
 
         makerAta.derive(makerMint, maker.key)
 

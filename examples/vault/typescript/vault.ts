@@ -11,7 +11,7 @@ export default class VaultProgram {
     ): Result {
         
         auth.derive(['auth', state.key])
-        state.derive(['state', owner.key]).init()
+        state.derive(['state', owner.key]).init(owner)
         vault.derive(['vault', auth.key])
 
         // assigning a arguement of type Pubkey to the custom_Acc(state) by calling the key property
