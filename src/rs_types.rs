@@ -719,37 +719,43 @@ impl ProgramInstruction {
                                         if chaincall1prop == "init" {
                                             ix.uses_system_program = true;
                                             cur_ix_acc.is_init = true;
-                                            cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                            cur_ix_acc.payer = Some(c.args.get(0).ok_or(anyhow!("Pass the payer account argument for init"))?.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                         }
                                         else if chaincall1prop == "initIfNeeded" {
                                             ix.uses_system_program = true;
                                             cur_ix_acc.is_initifneeded = true;
-                                            cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                            cur_ix_acc.payer = Some(c.args.get(0).ok_or(anyhow!("Pass the payer account argument for init"))?.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                         }
                                         if chaincall1prop == "close" {
-                                            cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                            cur_ix_acc.close = Some(c.args.get(0).ok_or(anyhow!("Pass the destination account argument for init"))?.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                             cur_ix_acc.is_mut = true;
                                         }
                                         if chaincall2prop == "has" {
-                                            let elems = &c.callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_call().ok_or(PoseidonError::CallNotFound)?.args[0].expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
+                                            let elems = &c.callee.as_expr().ok_or(PoseidonError::ExprNotFound)?.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_call().ok_or(PoseidonError::CallNotFound)?.args.get(0).ok_or(anyhow!("Pass the accounts array argument for has method"))?.expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
                                             let mut has_one:Vec<String> = vec![];
                                             for elem in elems.into_iter().flatten() {
                                                     has_one.push(elem.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.to_string().to_case(Case::Snake));
                                             }
                                             cur_ix_acc.has_one = has_one;
-
                                         }
                                     } else if prop == "init" {
                                         ix.uses_system_program = true;
                                         cur_ix_acc.is_init = true;
-                                        cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                        cur_ix_acc.payer = Some(c.args.get(0).ok_or(anyhow!("Pass the payer account argument for init"))?.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                     } else if prop == "initIfNeeded" {
                                         ix.uses_system_program = true;
                                         cur_ix_acc.is_initifneeded = true;
-                                        cur_ix_acc.payer = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                        cur_ix_acc.payer = Some(c.args.get(0).ok_or(anyhow!("Pass the payer account argument for init"))?.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                     } else if prop == "close" {
-                                        cur_ix_acc.close = Some(c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
+                                        cur_ix_acc.close = Some(c.args.get(0).ok_or(anyhow!("Pass the destination account argument for init"))?.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref().to_case(Case::Snake));
                                         cur_ix_acc.is_mut = true;
+                                    } else if prop == "has" {
+                                        let elems = &c.args.get(0).ok_or(anyhow!("Pass the accounts array argument for has method"))?.expr.as_array().ok_or(anyhow!("expected a array"))?.elems;
+                                        let mut has_one:Vec<String> = vec![];
+                                        for elem in elems.into_iter().flatten() {
+                                                has_one.push(elem.expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.to_string().to_case(Case::Snake));
+                                        }
+                                        cur_ix_acc.has_one = has_one;
                                     }
                                 }
                                 if obj == "SystemProgram" {
@@ -764,7 +770,7 @@ impl ProgramInstruction {
                                         let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some(){
-                                                let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                 let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                 let signer_var_token_stream = quote!{
                                                     &[&
@@ -820,7 +826,7 @@ impl ProgramInstruction {
                                         let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some() {
-                                                let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                let seeds = &c.args.get(4).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                 let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                 let signer_var_token_stream = quote!{
                                                     &[&
@@ -870,7 +876,7 @@ impl ProgramInstruction {
 
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(4).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -923,7 +929,7 @@ impl ProgramInstruction {
 
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(4).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -973,7 +979,7 @@ impl ProgramInstruction {
                                             
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[4].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(4).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1029,7 +1035,7 @@ impl ProgramInstruction {
                                             let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[6].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(6).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1079,7 +1085,7 @@ impl ProgramInstruction {
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1129,7 +1135,7 @@ impl ProgramInstruction {
         
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1179,7 +1185,7 @@ impl ProgramInstruction {
       
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1227,7 +1233,7 @@ impl ProgramInstruction {
 
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[2].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(2).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1271,7 +1277,7 @@ impl ProgramInstruction {
    
                                             if let Some(cur_ix_acc) = ix_accounts.get(acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[1].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(1).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1317,7 +1323,7 @@ impl ProgramInstruction {
 
                                             if let Some(cur_ix_acc) = ix_accounts.get(acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[3].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
@@ -1372,7 +1378,7 @@ impl ProgramInstruction {
                                             let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
-                                                    let seeds = &c.args[6].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                                    let seeds = &c.args.get(6).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                                     let seed_tokens_vec = ix.get_seeds(seeds, true)?;
                                                     let signer_var_token_stream = quote!{
                                                         &[&
