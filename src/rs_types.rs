@@ -764,8 +764,8 @@ impl ProgramInstruction {
                                         program_mod.add_import("anchor_lang", "system_program", "transfer");
                                         let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                         let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                                        let from_acc_ident = Ident::new(from_acc, proc_macro2::Span::call_site());
-                                        let to_acc_ident = Ident::new(to_acc, proc_macro2::Span::call_site());
+                                        let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[2].expr;
                                         let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
