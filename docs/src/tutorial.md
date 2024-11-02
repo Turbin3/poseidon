@@ -123,9 +123,9 @@ We’ve defined the `VoteState` account as our data structure, and now we're rea
 // Pass all the accounts we need as the parameters
 initialize(state: VoteState, user: Signer): Result {
 
-    // Use `.derive([seed])` to define the PDA and chain the `.init()` at the end for creating the account
+    // Use `.derive([seed])` to define the PDA and chain the `.init(payer)` at the end for creating the account and pass the payer argument
     state.derive(["vote"])
-         .init();
+         .init(user);
 
     // Set the initial value to the `vote` field of the account
     state.vote = new i64(0);
