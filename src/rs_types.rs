@@ -1,20 +1,12 @@
 use convert_case::{Case, Casing};
 use core::panic;
-use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::{format_ident, quote};
-use std::io;
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    io::{stdin, stdout},
-};
-use swc_common::{util::move_map::MoveMap, TypeEq};
+use proc_macro2::{Ident, Literal, Span, TokenStream};
+use quote::quote;
+use std::collections::HashMap;
 use swc_ecma_ast::{
-    BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr, NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType, TsTypeParamInstantiation, TsTypeRef
+    BindingIdent, CallExpr, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsType, TsTypeParamInstantiation,
 };
-use swc_ecma_parser::token::Token;
 
-use crate::ts_types;
 use crate::{
     errors::PoseidonError,
     ts_types::{rs_type_from_str, STANDARD_ACCOUNT_TYPES, STANDARD_ARRAY_TYPES, STANDARD_TYPES},
@@ -27,6 +19,13 @@ pub struct Ta {
     authority: String,
     is_ata: bool,
 }
+
+#[derive(Debug, Clone)]
+pub struct Mint {
+    mint_authority_token: TokenStream,
+    decimals_token: TokenStream,
+    freeze_authority_token: Option<TokenStream>
+}
 #[derive(Clone, Debug)]
 
 pub struct InstructionAccount {
@@ -38,7 +37,7 @@ pub struct InstructionAccount {
     pub is_init: bool,
     pub is_initifneeded: bool,
     pub is_close: bool,
-    pub is_mint: bool,
+    pub mint: Option<Mint>,
     pub ta: Option<Ta>,
     pub has_one: Vec<String>,
     pub close: Option<String>,
@@ -60,7 +59,7 @@ impl InstructionAccount {
             is_close: false,
             is_init: false,
             is_initifneeded: false,
-            is_mint: false,
+            mint: None,
             ta: None,
             has_one: vec![],
             close: None,
@@ -77,8 +76,8 @@ impl InstructionAccount {
         let of_type = &self.of_type;
         let constraints: TokenStream;
         // this is evaluated this way coz, ta might not have seeds
-        if (self.seeds.is_none() & self.ta.is_none()) & (self.is_close | self.is_init | self.is_initifneeded) {
-            panic!(r##"use derive or deriveWithBump while using "init" or "initIfNeeded" or "close" "##);
+        if (self.mint.is_none() & self.seeds.is_none() & self.ta.is_none()) & (self.is_close | self.is_init | self.is_initifneeded) {
+            panic!(r##"use derive or deriveWithBump with all the necessary arguments while using "init" or "initIfNeeded" or "close" "##);
         }
         let payer = match &self.payer {
             Some(s) => {
@@ -107,6 +106,27 @@ impl InstructionAccount {
                 }
             }
             None => quote!(),
+        };
+
+        let mint = match &self.mint {
+            Some(m) => {
+                let decimal_token = &m.decimals_token;
+                let mint_auth_token = &m.mint_authority_token;
+
+                if let Some(freeze_auth) =  &m.freeze_authority_token {
+                    quote!{
+                        mint::decimals = #decimal_token,
+                        mint::authority = #mint_auth_token,
+                        mint::freeze_authority = #freeze_auth,
+                    }
+                } else {
+                    quote!{
+                        mint::decimals = #decimal_token,
+                        mint::authority = #mint_auth_token,
+                    }
+                }
+            }
+            None => quote!{},
         };
         let close = match &self.close {
             Some(c) => {
@@ -178,23 +198,20 @@ impl InstructionAccount {
             false => quote! {},
         };
 
-        if self.is_mint {
-            constraints = quote! {}
-        } else {
-            constraints = quote! {
-                #[account(
-                    #init
-                    #init_if_needed
-                    #mutable
-                    #seeds
-                    #ata
-                    #has
-                    #bump
-                    #close
+        constraints = quote! {
+            #[account(
+                #init
+                #init_if_needed
+                #mutable
+                #seeds
+                #ata
+                #mint
+                #has
+                #bump
+                #close
 
-                )]
-            }
-        }
+            )]
+        };
         let check = if self.type_str == "UncheckedAccount" {
             quote! {
                 /// CHECK: This acc is safe
@@ -244,8 +261,9 @@ impl ProgramInstruction {
             instruction_attributes: None,
         }
     }
-    pub fn get_rs_arg_from_ts_arg(ix_accounts: &HashMap<String, InstructionAccount>, ts_arg_expr: &Expr) -> Result<TokenStream> {
+    pub fn get_rs_arg_from_ts_arg(&mut self, ts_arg_expr: &Expr, is_account_struct: bool) -> Result<TokenStream> {
         let ts_arg: TokenStream;
+        let mut ix_attribute_token: Vec<TokenStream> = vec![];
         match ts_arg_expr {
             Expr::Member(m) => {
                 let ts_arg_obj = m
@@ -268,13 +286,23 @@ impl ProgramInstruction {
                     &ts_arg_prop.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
-                if let Some(_cur_ix_acc) = ix_accounts.get(ts_arg_obj){
+                // if let Some(_cur_ix_acc) = ix_accounts.get(ts_arg_obj){
+                //     ts_arg = quote! {
+                //         ctx.accounts.#ts_arg_obj_ident.#ts_arg_prop_ident
+                //     };
+                // } else {
+                //     panic!("{:#?} not provided in proper format", ts_arg_expr)
+                // }
+                if is_account_struct {
+                    ts_arg = quote! {
+                        #ts_arg_obj_ident.#ts_arg_prop_ident
+                    };
+                } else {
                     ts_arg = quote! {
                         ctx.accounts.#ts_arg_obj_ident.#ts_arg_prop_ident
                     };
-                } else {
-                    panic!("{:#?} not provided in proper format", ts_arg_expr)
                 }
+                
             }
             Expr::Ident(i) => {
                 let ts_arg_str = i.sym.as_ref();
@@ -282,13 +310,32 @@ impl ProgramInstruction {
                     &ts_arg_str.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
+                if is_account_struct {
+                    for arg in self.args.iter() {
+                        if arg.name == ts_arg_str {
+                            let type_ident = &arg.of_type;
+
+                            ix_attribute_token.push(quote! {
+                                #ts_arg_ident : #type_ident
+                            })
+                        }
+                    }
+                }
                 ts_arg = quote! {
                     #ts_arg_ident
                 };
             }
+            Expr::Lit(Lit::Num(literal_value)) => {
+                let literal_token =  Literal::u8_unsuffixed(literal_value.value as u8);
+
+                ts_arg = quote!{#literal_token}
+            }
             _ => {
                 panic!("{:#?} not provided in proper format", ts_arg_expr)
             }
+        }
+        if !ix_attribute_token.is_empty() {
+            self.instruction_attributes = Some(ix_attribute_token);
         }
         Ok(ts_arg)
     }
@@ -691,7 +738,8 @@ impl ProgramInstruction {
                                             );
                                             cur_ix_acc.is_mut = true;
                                         }
-                                        if cur_ix_acc.type_str != "AssociatedTokenAccount"{
+                                        if (cur_ix_acc.type_str != "AssociatedTokenAccount") & (cur_ix_acc.type_str != "Mint") {
+
                                             let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                             let seeds_token = ix.get_seeds(seeds, false)?;
                                             cur_ix_acc.bump = Some(quote!{
@@ -700,6 +748,7 @@ impl ProgramInstruction {
                                             if !seeds_token.is_empty() {
                                                 cur_ix_acc.seeds = Some(seeds_token);
                                             }
+                                            
                                         }
                                         if prop == "deriveWithBump" {
                                             let bump_members = c.args.last().ok_or(anyhow!("no last element in vector"))?.expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
@@ -757,6 +806,47 @@ impl ProgramInstruction {
                                         }
                                         cur_ix_acc.has_one = has_one;
                                     }
+                                    if cur_ix_acc.type_str == "Mint" {
+                                        match *(derive_args.get(0).ok_or(anyhow!("Seed array not passed while deriving the mint. should be either a array or null type"))?.expr.clone()) {
+                                            Expr::Lit(Lit::Null(_)) => {},
+                                            Expr::Array(seed_array) => {
+                                                let seeds = &seed_array.elems;
+                                                let seeds_token = ix.get_seeds(seeds, false)?;
+                                                cur_ix_acc.bump = Some(quote!{
+                                                    bump
+                                                });
+                                                if !seeds_token.is_empty() {
+                                                    cur_ix_acc.seeds = Some(seeds_token);
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+
+                                        // all the arguments needs to passed
+                                        if derive_args.len() > 2 {
+                                            let mint_authority_expr = &derive_args.get(1).ok_or(anyhow!("Mint authority not passed while deriving the mint"))?.expr;
+
+                                            let mint_authority_token = ix.get_rs_arg_from_ts_arg(&mint_authority_expr, true)?;
+
+                                            let decimal_expr = &derive_args.get(2).ok_or(anyhow!("Decimals not passed while deriving the mint"))?.expr;
+                                            let decimals_token = ix.get_rs_arg_from_ts_arg(&decimal_expr, true)?;
+                                            let mut freeze_authority_token: Option<TokenStream> = None;
+
+                                            if derive_args.len() == 4 {
+                                                let freeze_auth_expr = &derive_args.get(3).ok_or(anyhow!("Decimals not passed while deriving the mint"))?.expr;
+                                            freeze_authority_token = ix.get_rs_arg_from_ts_arg(&freeze_auth_expr, true).ok();
+                                            }
+
+                                            let mint = Mint {
+                                                mint_authority_token,
+                                                decimals_token,
+                                                freeze_authority_token,
+                                            };
+
+                                            cur_ix_acc.mint = Some(mint);
+                                        }
+
+                                    }
                                 }
                                 if obj == "SystemProgram" {
                                     if prop == "transfer" {
@@ -767,7 +857,7 @@ impl ProgramInstruction {
                                         let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[2].expr;
-                                        let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                        let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some(){
                                                 let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
@@ -823,7 +913,7 @@ impl ProgramInstruction {
                                         let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                         let amount_expr = &c.args[3].expr;
-                                        let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                        let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
                                         if let Some(cur_ix_acc) = ix_accounts.get(from_acc){
                                             if cur_ix_acc.seeds.is_some() {
                                                 let seeds = &c.args.get(4).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
@@ -872,7 +962,7 @@ impl ProgramInstruction {
                                             let from_acc_ident = Ident::new(&from_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                            let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
 
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
@@ -925,7 +1015,7 @@ impl ProgramInstruction {
                                             let to_acc_ident = Ident::new(&to_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                            let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
 
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
@@ -975,7 +1065,7 @@ impl ProgramInstruction {
                                             let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
-                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
+                                            let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
                                             
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
@@ -1031,8 +1121,8 @@ impl ProgramInstruction {
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[4].expr;
                                             let decimal_expr = &c.args[5].expr;
-                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
-                                            let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
+                                            let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
+                                            let decimal = ix.get_rs_arg_from_ts_arg(decimal_expr, false)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     let seeds = &c.args.get(6).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
@@ -1374,8 +1464,8 @@ impl ProgramInstruction {
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[4].expr;
                                             let decimal_expr = &c.args[5].expr;
-                                            let amount = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &amount_expr)?;
-                                            let decimal = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, decimal_expr)?;
+                                            let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
+                                            let decimal = ix.get_rs_arg_from_ts_arg(decimal_expr, false)?;
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     let seeds = &c.args.get(6).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;

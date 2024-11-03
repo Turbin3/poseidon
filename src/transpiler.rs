@@ -1,5 +1,5 @@
 use core::panic;
-use rust_format::{Formatter, PrettyPlease, RustFmt};
+use rust_format::{Formatter, PrettyPlease};
 use std::{collections::HashMap, fs};
 
 use crate::rs_types::{ProgramAccount, ProgramModule};
