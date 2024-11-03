@@ -443,11 +443,11 @@ impl ProgramInstruction {
 
     pub fn from_class_method(
         program_mod: &mut ProgramModule,
-        c: &ClassMethod,
+        cm: &ClassMethod,
         custom_accounts: &HashMap<String, ProgramAccount>,
     ) -> Result<Self> {
         // Get name
-        let name = c
+        let name = cm
             .key
             .as_ident()
             .ok_or(PoseidonError::IdentNotFound)?
@@ -458,7 +458,8 @@ impl ProgramInstruction {
         let mut ix_accounts: HashMap<String, InstructionAccount> = HashMap::new();
         let mut ix_arguments: Vec<InstructionArgument> = vec![];
         let mut ix_body: Vec<TokenStream> = vec![];
-        c.function.params.iter().for_each(|p| {
+        cm.function.params.iter().for_each(|p| {
+
             let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
             let name = id.sym.to_string();
             let snaked_name = id.sym.to_string().to_case(Case::Snake);
@@ -560,32 +561,32 @@ impl ProgramInstruction {
                     program_mod.add_import("anchor_spl", "token", "Token");
                 }
             } else if custom_accounts.contains_key(&of_type) {
-                let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
-                ix_accounts.insert(
-                    name.clone(),
-                    InstructionAccount::new(
-                        snaked_name.clone(),
-                        quote! { Account<'info, #ty> },
-                        of_type.clone(),
-                        optional,
-                    ),
-                );
-                ix.uses_system_program = true;
-                let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
-                cur_ix_acc.space = Some(
-                    custom_accounts
-                        .get(&of_type)
-                        .expect("space for custom acc not found")
-                        .space,
-                );
-                cur_ix_acc.is_custom = true;
+                    let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
+                    ix_accounts.insert(
+                        name.clone(),
+                        InstructionAccount::new(
+                            snaked_name.clone(),
+                            quote! { Account<'info, #ty> },
+                            of_type.clone(),
+                            optional,
+                        ),
+                    );
+                    ix.uses_system_program = true;
+                    let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
+                    cur_ix_acc.space = Some(
+                        custom_accounts
+                            .get(&of_type)
+                            .expect("space for custom acc not found")
+                            .space,
+                    );
+                    cur_ix_acc.is_custom = true;
             } else {
                 panic!("Invalid variable or account type: {}", of_type);
             }
         });
-        ix.args = ix_arguments;
 
-        let _ = c.clone()
+
+        let _ = cm.clone()
             .function
             .body
             .ok_or(anyhow!("block statement none"))
@@ -759,7 +760,8 @@ impl ProgramInstruction {
                                     }
                                 }
                                 if obj == "SystemProgram" {
-                                    if prop == "transfer" {
+                                    match prop  {
+                                       "transfer" => {
                                         program_mod.add_import("anchor_lang", "system_program", "Transfer");
                                         program_mod.add_import("anchor_lang", "system_program", "transfer");
                                         let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -807,10 +809,56 @@ impl ProgramInstruction {
                                                 });
                                             }
                                         }
-
+                                       }
+                                       "createAccount" => {
+                                        program_mod.add_import("anchor_lang", "system_program", "create_account");
+                                        program_mod.add_import("anchor_lang", "system_program", "CreateAccount");
+                                        let from_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let to_acc = c.args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let acc_data = c.args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                        let from_acc_ident = Ident::new(&from_acc, proc_macro2::Span::call_site());
+                                        let to_acc_ident = Ident::new(&to_acc, proc_macro2::Span::call_site());
+                                        let acc_data_ident = Ident::new(&acc_data.to_case(Case::Snake), proc_macro2::Span::call_site());
+                                        let snaked_name = Ident::new(&acc_data.to_case(Case::Snake), proc_macro2::Span::call_site()).to_string();
+                                        let mut acc_data_type= Ident::new("defaultType",proc_macro2::Span::call_site());
+                                        cm.function.params.iter().for_each(|p|{
+                                            let BindingIdent { id, type_ann } = p.pat.clone().expect_ident();
+                                            let binding = type_ann.expect("Invalid type annotation");
+                                            let name = id.sym.to_string();
+                                            let (of_type, _len, optional) =
+                                            extract_type(binding).unwrap_or_else(|_| panic!("Keyword type is not supported"));      
+                                            if name == acc_data {
+                                                acc_data_type = Ident::new(&of_type, proc_macro2::Span::call_site());
+                                            }
+                                        });
+                                        ix_arguments.push(InstructionArgument {
+                                            name: snaked_name,
+                                            of_type: quote!(
+                                                #acc_data_type, 
+                                            ),
+                                            optional:false,
+                                        });
+                                        ix_body.push(quote!{
+                                                let account_span = (#acc_data_ident.try_to_vec()?).len();
+                                                let lamports_required = (Rent::get()?).minimum_balance(account_span);
+                                                let cpi_ctx = CpiContext::new(
+                                                    ctx.accounts.system_program.to_account_info(),
+                                                    CreateAccount {
+                                                        from: ctx.accounts.#from_acc_ident.to_account_info(),
+                                                        to: ctx.accounts.#to_acc_ident.to_account_info(),
+                                                    },
+                                                );
+                                                create_account(
+                                                    cpi_ctx,
+                                                    lamports_required,
+                                                    account_span as u64,
+                                                    &ctx.accounts.system_program.key(),
+                                                )?;
+                                        });
+                                       },
+                                     _ => {}
                                     }
-                                }
-
+                            }
                                 if obj == "TokenProgram" {
                                     match prop {
                                         "transfer" => {
@@ -1581,6 +1629,7 @@ impl ProgramInstruction {
             }).collect::<Result<Vec<()>>>()?;
 
         ix.accounts = ix_accounts.into_values().collect();
+        ix.args = ix_arguments;
         ix.body = ix_body;
 
         Ok(ix)
