@@ -37,12 +37,13 @@ pub const STANDARD_ARRAY_TYPES: [&str; 13] = [
     "Vec<Boolean>",
 ];
 
-pub const STANDARD_ACCOUNT_TYPES: [&str; 7] = [
+pub const STANDARD_ACCOUNT_TYPES: [&str; 8] = [
     "Signer",
     "UncheckedAccount",
     "AccountInfo",
     "TokenAccount",
     "SystemAccount",
+    "Metadata", //ideally it should be MetadataAccount but in the docs its just Metadata so i'm following that 
     "AssociatedTokenAccount",
     "Mint",
 ];
