@@ -62,7 +62,8 @@ pub fn init(name: &String) {
         )
     });
 
-    let program_file_name = name.to_case(Case::Camel);
+    let ts_program_file_name = name.to_case(Case::Camel);
+    let toml_program_name = name.to_case(Case::Snake);
 
     // Get the generated program ID from Anchor.toml
     let anchor_toml_path = project_path.join("Anchor.toml");
@@ -72,12 +73,12 @@ pub fn init(name: &String) {
     let program_ids = extract_program_ids(&anchor_toml)
         .unwrap_or_else(|_| panic!("Failed to extract program IDs from Anchor.toml"));
 
-    let program_id = program_ids.get(name)
+    let program_id = program_ids.get(&toml_program_name)
         .unwrap_or_else(|| panic!("Program ID not found for {}", name));
 
     // Create the ts-programs src/{programName}.ts file and add default content
     let ts_programs_src_program_path =
-        ts_programs_src_path.join(format!("{}.ts", program_file_name));
+        ts_programs_src_path.join(format!("{}.ts", ts_program_file_name));
     fs::write(
         &ts_programs_src_program_path,
         get_default_program_content(&name, &program_id),
@@ -85,7 +86,7 @@ pub fn init(name: &String) {
     .unwrap_or_else(|_| {
         panic!(
             "Failed to create {} file at {:?}",
-            program_file_name, ts_programs_src_program_path
+            ts_program_file_name, ts_programs_src_program_path
         )
     });
 
@@ -122,6 +123,8 @@ pub fn build_workspace() -> Result<()> {
         }
 
         let program_name = get_program_name_from_cargo(&cargo_path)?;
+        let ts_program_file_name = program_name.to_case(Case::Camel);
+
         println!("Found program: {}", program_name);
 
         // Create/ensure src directory exists
@@ -132,7 +135,7 @@ pub fn build_workspace() -> Result<()> {
         // Look for corresponding TypeScript file
         let ts_file = PathBuf::from("ts-programs")
             .join("src")
-            .join(format!("{}.ts", program_name));
+            .join(format!("{}.ts", ts_program_file_name));
 
         if !ts_file.exists() {
             println!("Warning: No TypeScript file found at {}", ts_file.display());
