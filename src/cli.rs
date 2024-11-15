@@ -210,7 +210,8 @@ pub fn sync_program_ids() -> Result<()> {
     }
 
     for (program_name, program_id) in program_ids {
-        let ts_file = ts_programs_dir.join(format!("{}.ts", program_name));
+        let ts_program_file_name = program_name.to_case(Case::Camel);
+        let ts_file = ts_programs_dir.join(format!("{}.ts", ts_program_file_name));
         if !ts_file.exists() {
             println!("Warning: TypeScript file not found for program: {}", program_name);
             continue;
