@@ -48,9 +48,8 @@ pub struct InstructionAccount {
     pub bump: Option<TokenStream>,
     pub payer: Option<String>,
     pub space: Option<u32>,
-    pub seeds_program:Option<String>, //seeds::program
+    pub seeds_program:Option<TokenStream>,
     pub is_custom: bool,
-    pub is_metadata_acc:bool,  
 }
 
 impl InstructionAccount {
@@ -74,7 +73,6 @@ impl InstructionAccount {
             space: None,
             seeds_program:None,
             is_custom: false,
-            is_metadata_acc:false,
         }
     }
 
@@ -157,14 +155,8 @@ impl InstructionAccount {
         };
         let seeds_program = match &self.seeds_program {
             Some(s) => {
-                if self.is_metadata_acc {
-                    return quote! {
-                        seeds::program = token_metadata_program.key()
-                    };
-                } else {
-                    return quote!{
-                         seeds::program = #s
-                    };
+                quote!{
+                    seeds::program = #s
                 }
             } None => {
                 quote!{}
@@ -632,6 +624,7 @@ impl ProgramInstruction {
                     ix.uses_token_program = true;
                     ix.uses_token_metadata_program = true; 
                     program_mod.add_import("anchor_spl", "metadata", "mpl_token_metadata");
+                    program_mod.add_import("anchor_spl", "token", "Token");
                 }
             } else if custom_accounts.contains_key(&of_type) {
                 let ty = Ident::new(&of_type, proc_macro2::Span::call_site());
@@ -774,10 +767,16 @@ impl ProgramInstruction {
                                             if !seeds_token.is_empty() {
                                                 cur_ix_acc.seeds = Some(seeds_token);
                                             }
-                                        } else if cur_ix_acc.type_str == "Metadata" {
-                                        //    token_metadata_program.key().as_ref()
+                                        } 
+                                        if cur_ix_acc.type_str == "Metadata" {
+                                            let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                            let mut seeds_token = ix.get_seeds(seeds, false)?;
+                                            seeds_token.push(quote!{token_metadata_program.key().as_ref()});
+                                            println!("this is the metadata account");
                                             cur_ix_acc.is_mut = true;
-                                            cur_ix_acc.is_metadata_acc = true;
+                                            cur_ix_acc.seeds_program = Some(quote!{
+                                                token_metadata_program.key()
+                                            })
                                         }
                                         if prop == "deriveWithBump" {
                                             let bump_members = c.args.last().ok_or(anyhow!("no last element in vector"))?.expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
@@ -1301,7 +1300,7 @@ impl ProgramInstruction {
                                                 }
                                             }
                                         },
-                                        "revoke" => {
+                                        "revoke" => { 
                                             program_mod.add_import("anchor_spl", "token", "revoke");
                                             program_mod.add_import("anchor_spl", "token", "Revoke");
                                             let source_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -1505,7 +1504,7 @@ impl ProgramInstruction {
                                             program_mod.add_import("anchor_spl", "token", "Mint");
                                             // parse the create_metadata_v3 class constructor instantiation
                                             let mut create_metadata_v3_args = vec![
-                                                String::from("payer_value"),  //Default value plaecholders , can we just make them empty strings?
+                                                String::from("payer_value"),  //Default value placeholders , can we just make them empty strings?
                                                 String::from("mint_authority_value"),
                                                 String::from("update_authority_value"),
                                                 String::from("mint_account_value"),
@@ -1527,47 +1526,149 @@ impl ProgramInstruction {
                                             let mint_acc_ident = Ident::new(&create_metadata_v3_args[3],proc_macro2::Span::call_site());
                                              // parse the data_v2 class constructor instantiation
                                              // This gets the arguments of the DataV2(...)
+                                            
                                             let mut data_v2_args = vec![
                                                 String::from("token_name"),
                                                 String::from("token_symbol"),
                                                 String::from("token_uri"),
                                                 String::from("seller_fee_basis_points"),
-                                                String::from("None"),
-                                                String::from("None"),
-                                                String::from("None"),
                                             ];
+                                            
+                                            //Initialize option arguments with none as default 
+                                            let mut creators = quote!(None);
+                                            let mut collection = quote!(None);
+                                            let mut uses = quote!(None);
 
                                             if let Some(expr) = c.args[1].expr.as_new() {
                                                 if let Some(args) = &expr.args {
                                                     for (index, arg) in args.iter().enumerate() {
                                                         if index >= data_v2_args.len() {
-                                                            break;
-                                                        }
-                                                        match &arg.expr {
-                                                            // For regular identifiers (token_name, token_symbol, token_uri)
-                                                            expr if expr.is_ident() => {
-                                                                if let Some(ident) = expr.as_ident() {
-                                                                    data_v2_args[index] = ident.sym.to_string();
-                                                                }
-                                                            },
-                                                            // For function calls like none() and some() 
-                                                            expr if expr.is_call() => {
-                                                                if let Some(call) = expr.as_call() {
-                                                                    if let Some(callee) = call.callee.as_expr() {
-                                                                        if let Some(ident) = callee.as_ident() {
-                                                                            match ident.sym.to_string().as_str() {
-                                                                                "none" => data_v2_args[index] = "None".to_string(),
-                                                                                // parsing this is a way more complex , we have to take each of the types or args into consideration, will do it later
-                                                                                "some" => todo!(),
-                                                                                _ => panic!("Unknown function call: {}", ident.sym),
+                                                            match &arg.expr {
+                                                                // For regular identifiers (token_name, token_symbol, token_uri)
+                                                                expr if expr.is_ident() => {
+                                                                    if let Some(ident) = expr.as_ident() {
+                                                                        data_v2_args[index] = ident.sym.to_string();
+                                                                    }
+                                                                },
+                                                                    // For function calls like none() and some() 
+                                                                    expr if expr.is_call() => {
+                                                                        if let Some(call) = expr.as_call() {
+                                                                            if let Some(callee) = call.callee.as_expr() {
+                                                                                if let Some(ident) = callee.as_ident() {
+                                                                                    let option_value = match index {
+                                                                                                        4 => &mut creators,
+                                                                                                        5 => &mut collection,
+                                                                                                        6 => &mut uses,
+                                                                                                        _ => continue,
+                                                                                                    };
+                                                                                    match ident.sym.to_string().as_str() {
+                                                                                        // if its "none" it remains as the default value
+                                                                                        "none" => (),
+                                                                                        // parsing this is a way more complex , we have to take each of the types or args into consideration
+                                                                                        "some" => if !call.args.is_empty() {
+                                                                                            if let Some(new_expr) = call.args[0].expr.as_new() {
+                                                                                                match new_expr.callee.as_ident() {
+                                                                                                    Some(constructor_ident) => {
+                                                                                                        match constructor_ident.sym.to_string().as_str() {
+                                                                                                            "Vec" => {
+                                                                                                                // Handle Vec<Creator> case
+                                                                                                                if let Some(vec_args) = &new_expr.args {
+                                                                                                                     if let Some(creator_new) = vec_args[0].expr.as_new() {
+                                                                                                                        if let Some(creator_args) = &creator_new.args {
+                                                                                                                            let key = creator_args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                                                                                                            let verified = creator_args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                                                                                                            let share = creator_args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+
+                                                                                                                             let key_ident = Ident::new(key, proc_macro2::Span::call_site());
+
+                                                                                                                             let verified_ident = Ident::new(verified, proc_macro2::Span::call_site());
+
+                                                                                                                             let share_ident = Ident::new(share, proc_macro2::Span::call_site());
+
+                                                                                                                             *option_value = quote! {
+                                                                                                                                Some(vec![mpl_token_metadata::types::Creator{ 
+                                                                                                                                    key:#key_ident, 
+                                                                                                                                    verified:#verified_ident, 
+                                                                                                                                    share:#share_ident
+                                                                                                                                }]);
+                                                                                                                            };
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            },
+                                                                                                            "Collection" => {
+                                                                                                                // Handle Collection case
+                                                                                                                if let Some(collection_args) = &new_expr.args {
+                                                                                                                    //extract the value for verified and key 
+                                                                                                                    let verified_expr = &collection_args[0].expr;
+                                                                                                                    let verified = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &verified_expr)?;
+
+                                                                                                                    let key_expr = collection_args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                                                                                                     let key = Ident::new(key_expr, proc_macro2::Span::call_site());
+                                                                                                                    // println!("these are the strings {} {}",verified, key)
+                                                                                                                    *option_value = quote! {
+                                                                                                                        Some(mpl_token_metadata::types::Collection { 
+                                                                                                                            verified:#verified, 
+                                                                                                                            key:#key 
+                                                                                                                        })
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            },
+                                                                                                            "Uses" => {
+                                                                                                                // Handle Uses case
+                                                                                                                if let Some(uses_args) = &new_expr.args {
+                                                                                                                    let mut enum_type = "";
+                                                                                                                    let mut enum_variant = "";
+                                                                                                                    if let Some(expr) = uses_args[0].expr.as_member(){
+                                                                                                                        // Extract the object (enum type) and property
+                                                                                                                        if let Some(obj) = expr.obj.as_ident() {
+                                                                                                                            enum_type = obj.sym.as_ref(); // "UseMethod"
+                                                                                                                            enum_variant = expr.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref(); // "Burn"
+                                                                                                                        } 
+                                                                                                                    }
+                                                                                                                    let remaining = uses_args[1].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                                                                                                    
+                                                                                                                    let total = uses_args[2].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+
+                                                                                                                    let remaining_ident = Ident::new(remaining, proc_macro2::Span::call_site());
+
+                                                                                                                     let total_ident = Ident::new(total, proc_macro2::Span::call_site());
+
+                                                                                                                     let enum_type_ident = Ident::new(enum_type,proc_macro2::Span::call_site());
+
+                                                                                                                     let enum_variant_ident = Ident::new(enum_variant, proc_macro2::Span::call_site());
+                                                                                                                    // let remaining_expr = &uses_args[1].expr;
+                                                                                                                    // let total_expr = &uses_args[2].expr;
+                                                                                                                    // //so right now i can only pass new arguments eg new u64(9) as parameters in the accounts interface or method arguments as get_rs_arg_from_ts_arg cannot parse new expressions right now ,  cannot pass something like new u64(8) as a direct argument in the method 
+                                                                                                                    // let remaining = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &remaining_expr)?;
+                                                                                                                    // let total = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &total_expr)?;
+                                                                                                                    
+                                                                                                                     *option_value = quote! {
+                                                                                                                        Some(mpl_token_metadata::types::Uses { 
+                                                                                                                            use_method:#enum_type_ident::#enum_variant_ident, remaining:#remaining_ident, 
+                                                                                                                            total:#total_ident
+                                                                                                                        })
+                                                                                                                    };
+                                                                                                                }
+                                                                                                            },
+                                                                                                            _ => println!("Unknown constructor: {}", constructor_ident.sym),
+                                                                                                        }
+                                                                                                    },
+                                                                                                    None => println!("Could not get constructor identifier"),
+                                                                                                }
+                                                                                            }
+                                                                                        },
+
+                                                                                        _ => panic!("Unknown function call: {}", ident.sym),
+                                                                                    }
+                                                                                }
                                                                             }
                                                                         }
-                                                                    }
-                                                                }
-                                                            },
-                                                            _ => println!("Unhandled argument type at index {}", index),
+                                                                    },
+                                                                _ => println!("Unhandled argument type at index {}", index),
+                                                            }
                                                         }
-                                                    }
+                                                    } 
                                                 }
                                             }
                                             // Create Idents
@@ -1575,9 +1676,6 @@ impl ProgramInstruction {
                                             let token_symbol_ident = Ident::new(&data_v2_args[1], proc_macro2::Span::call_site());
                                             let token_uri_ident = Ident::new(&data_v2_args[2], proc_macro2::Span::call_site());
                                             let seller_fee_basis_points_ident = Ident::new(&data_v2_args[3], proc_macro2::Span::call_site());
-                                            let creators_ident = Ident::new(&data_v2_args[3], proc_macro2::Span::call_site());
-                                            let collection_ident = Ident::new(&data_v2_args[4], proc_macro2::Span::call_site());
-                                            let uses_ident = Ident::new(&data_v2_args[5], proc_macro2::Span::call_site());
                                             // how to add the token_metadata_program.key().as_ref() and seeds::program = token_metadata_program.key(),
                                                 //   /// CHECK: Validate address by deriving pda
                                                 // #[account(
@@ -1592,20 +1690,20 @@ impl ProgramInstruction {
                                             let update_authority_is_signer_expr = &c.args[3].expr;
                                             let is_mutable = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &is_mutable_expr)?;
                                             let update_authority_is_signer = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, & update_authority_is_signer_expr)?;
-                                            let mut collection_details = String::from("collection_details");
+                                            
+                                            let mut collection_details = quote!{None};
 
                                             if let Some(call) = c.args[4].expr.as_call() {
                                                       if let Some(callee) = call.callee.as_expr() {
                                                             if let Some(ident) = callee.as_ident() {
                                                                      match ident.sym.to_string().as_str() {
-                                                                            "none" => collection_details = "None".to_string(),
+                                                                            "none" => (),
                                                                             "some" => todo!(),
                                                                             _ => panic!("Unknown function call: {}", ident.sym),
                                                                     }
                                                      }
                                                 }
                                             }
-                                            let collection_details_ident = Ident::new(&collection_details, proc_macro2::Span::call_site());
 
                                             ix_body.push(quote!{
                                                         let token_data: mpl_token_metadata::types::DataV2 = mpl_token_metadata::types::DataV2 {
@@ -1613,9 +1711,9 @@ impl ProgramInstruction {
                                                             symbol: #token_symbol_ident,
                                                             uri: #token_uri_ident,
                                                             seller_fee_basis_points:#seller_fee_basis_points_ident,
-                                                            creators: #creators_ident,
-                                                            collection: #collection_ident,
-                                                            uses: #uses_ident,
+                                                            creators: #creators,
+                                                            collection: #collection,
+                                                            uses: #uses,
                                                         };
                                                         let cpi_accounts = CreateMetadataAccountsV3 {
                                                             payer: ctx.accounts.#payer_acc_ident.to_account_info(),
@@ -1632,7 +1730,7 @@ impl ProgramInstruction {
                                                             token_data,
                                                             #is_mutable,
                                                             #update_authority_is_signer,
-                                                            #collection_details_ident
+                                                            #collection_details,
                                                         )?;
                                             })
                                         }
