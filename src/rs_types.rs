@@ -617,12 +617,15 @@ impl ProgramInstruction {
                         name.clone(),
                         InstructionAccount::new(
                             snaked_name.clone(),
-                            quote! { Account<'info, Metadata> },
+                            quote! { 
+                                UncheckedAccount<'info>
+                            },
                             of_type,
                             optional,
                         ),
                     );
                     ix.uses_token_program = true;
+                    ix.uses_system_program = true;
                     ix.uses_token_metadata_program = true; 
                     program_mod.add_import("anchor_spl", "metadata", "mpl_token_metadata");
                     program_mod.add_import("anchor_spl", "token", "Token");
@@ -1621,12 +1624,12 @@ impl ProgramInstruction {
                                                             payer: ctx.accounts.#payer_acc_ident.to_account_info(),
                                                             update_authority: ctx.accounts.#update_authority_acc_ident.to_account_info(),
                                                             mint: ctx.accounts.#mint_acc_ident.to_account_info(),
-                                                            metadata: ctx.accounts.metadata.to_account_info(),
+                                                            metadata: ctx.accounts.metadata_account.to_account_info(),
                                                             mint_authority: ctx.accounts.#mint_authority_acc_ident.to_account_info(),
                                                             system_program: ctx.accounts.system_program.to_account_info(),
                                                             rent: ctx.accounts.rent.to_account_info(),
                                                         };
-                                                        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+                                                        let cpi_ctx = CpiContext::new(ctx.accounts.token_metadata_program.to_account_info(), cpi_accounts);
                                                         create_metadata_accounts_v3(
                                                             cpi_ctx, 
                                                             token_data,
@@ -1869,7 +1872,7 @@ impl ProgramInstruction {
         }
         if self.uses_token_metadata_program {
             accounts.push(quote! {
-                 pub token_metadata_program: Program<'info, mpl_token_metadata::accounts::Metadata>,
+                 pub token_metadata_program: Program<'info, Metadata>,
             });
             // if it doesn't weirdly mess up the TokenStream or give stupid errors then we can put them in one quote macro 
             accounts.push(quote! {
