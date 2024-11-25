@@ -257,7 +257,7 @@ fn update_program_id_in_ts(file_path: &Path, program_id: &str) -> Result<()> {
         .context("Failed to read TypeScript file")?;
 
     // Create a regex that matches both possible patterns
-    let re = RegexBuilder::new(r#"static PROGRAM_ID = new Pubkey\("([^"]*)"\)"#)
+    let re = RegexBuilder::new(r#"static PROGRAM_ID = new Pubkey\(["']([^"']*)["']\)"#)
         .case_insensitive(true)
         .build()
         .context("Failed to create regex")?;
