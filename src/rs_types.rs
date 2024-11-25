@@ -51,6 +51,7 @@ pub struct InstructionAccount {
     pub space: Option<u32>,
     pub seeds_program:Option<TokenStream>,
     pub is_custom: bool,
+    pub is_metadata_acc:bool,
 }
 
 impl InstructionAccount {
@@ -74,6 +75,7 @@ impl InstructionAccount {
             space: None,
             seeds_program:None,
             is_custom: false,
+            is_metadata_acc:false,
         }
     }
 
@@ -214,13 +216,19 @@ impl InstructionAccount {
         let check = if self.type_str == "UncheckedAccount" {
             quote! {
                 /// CHECK: This acc is safe
-            }
-        } else {
+            } 
+        } 
+        else if self.is_metadata_acc {
+                quote!{
+                    /// CHECK: Validate address by deriving pda
+                }
+        }
+        else {
             quote! {}
         };
         quote!(
-            #constraints
             #check
+            #constraints
             pub #name: #of_type,
         )
     }
@@ -617,9 +625,7 @@ impl ProgramInstruction {
                         name.clone(),
                         InstructionAccount::new(
                             snaked_name.clone(),
-                            quote! { 
-                                UncheckedAccount<'info>
-                            },
+                            quote! { UncheckedAccount<'info>},
                             of_type,
                             optional,
                         ),
@@ -779,6 +785,7 @@ impl ProgramInstruction {
                                             if !seeds_token.is_empty() {
                                                 seeds_token.push(quote!{token_metadata_program.key().as_ref()});
                                             } 
+                                            cur_ix_acc.is_metadata_acc = true;
                                             cur_ix_acc.is_mut = true;
                                             cur_ix_acc.seeds = Some(seeds_token);
                                             cur_ix_acc.seeds_program = Some(quote!{
