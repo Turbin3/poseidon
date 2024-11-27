@@ -30,6 +30,12 @@ pub struct Ta {
     authority: String,
     is_ata: bool,
 }
+#[derive(Debug, Clone)]
+pub struct Ma { // Mint account - Adds constraints for initializing mint accounts 
+    decimals:String,
+    authority:String,
+    freeze_authority:String,
+}
 #[derive(Clone, Debug)]
 
 pub struct InstructionAccount {
@@ -43,6 +49,7 @@ pub struct InstructionAccount {
     pub is_close: bool,
     pub is_mint: bool,
     pub ta: Option<Ta>,
+    pub ma:Option<Ma>,
     pub has_one: Vec<String>,
     pub close: Option<String>,
     pub seeds: Option<Vec<TokenStream>>,
@@ -67,6 +74,7 @@ impl InstructionAccount {
             is_initifneeded: false,
             is_mint: false,
             ta: None,
+            ma:None,
             has_one: vec![],
             close: None,
             seeds: None,
@@ -83,8 +91,8 @@ impl InstructionAccount {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let of_type = &self.of_type;
         let constraints: TokenStream;
-        // this is evaluated this way coz, ta might not have seeds
-        if (self.seeds.is_none() & self.ta.is_none())
+        // this is evaluated this way coz, ta & ma might not have seeds
+        if (self.seeds.is_none() & self.ta.is_none() & self.ma.is_none())
             & (self.is_close | self.is_init | self.is_initifneeded)
         {
             panic!(
@@ -115,6 +123,19 @@ impl InstructionAccount {
                         token::mint = #mint,
                         token::authority = #authority,
                     }
+                }
+            }
+            None => quote!(),
+        };
+        let mint = match &self.ma {
+            Some(a) => {
+                let decimals = Ident::new(&a.decimals, proc_macro2::Span::call_site());
+                let authority = Ident::new(&a.authority, proc_macro2::Span::call_site());
+                let freeze_authority = Ident::new(&a.freeze_authority, proc_macro2::Span::call_site());
+                 quote! {
+                        mint::decimals = #decimals,
+                        mint::authority = #authority,
+                        mint::freeze_authority = #freeze_authority,
                 }
             }
             None => quote!(),
@@ -206,6 +227,7 @@ impl InstructionAccount {
                     #mutable
                     #seeds
                     #ata
+                    #mint
                     #has
                     #bump
                     #close
@@ -603,7 +625,9 @@ impl ProgramInstruction {
                             optional,
                         ),
                     );
+                    ix.uses_token_program = true;
                     program_mod.add_import("anchor_spl", "token", "Mint");
+                    program_mod.add_import("anchor_spl", "token", "Token");
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                     cur_ix_acc.is_mut = true;
                 } else if of_type == "TokenAccount" {
@@ -768,7 +792,52 @@ impl ProgramInstruction {
                                             );
                                             cur_ix_acc.is_mut = true;
                                         }
-                                        if cur_ix_acc.type_str != "AssociatedTokenAccount"{
+                                        else if cur_ix_acc.type_str == "Metadata" {
+                                            let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                            let mut seeds_token = ix.get_seeds(seeds, false)?;
+                                            //automatically adds the token_metadata_program key or id to the seeds 
+                                            //Metadata's key must match seed of ['metadata', program id, mint], the order matters
+                                            //this feels kinds hacky but this was the only thing i came up with to make the seeds be in order 
+                                            if !seeds_token.is_empty() {
+                                                seeds_token.insert(seeds_token.len() / 2, quote!{token_metadata_program.key().as_ref()});
+                                            } 
+                                            cur_ix_acc.is_metadata_acc = true;
+                                            cur_ix_acc.is_mut = true;
+                                            cur_ix_acc.bump = Some(quote!{
+                                                bump
+                                            });
+                                            cur_ix_acc.seeds = Some(seeds_token);
+                                            cur_ix_acc.seeds_program = Some(quote!{
+                                                token_metadata_program.key()
+                                            });
+                                        }
+                                        else if cur_ix_acc.type_str == "Mint" {
+                                             let decimals = derive_args[0].expr.as_ident().ok_or(PoseidonError::MemberNotFound)?.sym.as_ref();
+                                             let decimals_ident = Ident::new(decimals, proc_macro2::Span::call_site());
+                                             let authority = derive_args[1].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let freeze_authority = derive_args[2].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            cur_ix_acc.ma = Some(
+                                                Ma {
+                                                    decimals:decimals.to_string(),
+                                                    authority: authority.to_case(Case::Snake),
+                                                    freeze_authority: freeze_authority.to_case(Case::Snake)
+                                                }
+                                            );
+                                            cur_ix_acc.is_mut = true; 
+                                            let mut ix_attribute_token :Vec<TokenStream> = vec![];
+                                            //iterate through all the instruction arguments and find a match for the decimals arg name, we do this so we can get the type, it will be better than hardcoding a u8 type
+                                             for arg in ix.args.iter() {
+                                                if arg.name == decimals {
+                                                    let type_ident = &arg.of_type;
+
+                                                    ix_attribute_token.push(quote! {
+                                                        #decimals_ident : #type_ident
+                                                    })
+                                                }
+                                            }
+                                            ix.instruction_attributes = Some(ix_attribute_token);
+                                        }
+                                        if cur_ix_acc.type_str != "AssociatedTokenAccount" && cur_ix_acc.type_str != "Metadata" && cur_ix_acc.type_str != "Mint"  {
                                             let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                             let seeds_token = ix.get_seeds(seeds, false)?;
                                             cur_ix_acc.bump = Some(quote!{
@@ -778,20 +847,6 @@ impl ProgramInstruction {
                                                 cur_ix_acc.seeds = Some(seeds_token);
                                             }
                                         } 
-                                        if cur_ix_acc.type_str == "Metadata" {
-                                            let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
-                                            let mut seeds_token = ix.get_seeds(seeds, false)?;
-                                            // automatically adds the 
-                                            if !seeds_token.is_empty() {
-                                                seeds_token.push(quote!{token_metadata_program.key().as_ref()});
-                                            } 
-                                            cur_ix_acc.is_metadata_acc = true;
-                                            cur_ix_acc.is_mut = true;
-                                            cur_ix_acc.seeds = Some(seeds_token);
-                                            cur_ix_acc.seeds_program = Some(quote!{
-                                                token_metadata_program.key()
-                                            })
-                                        }
                                         if prop == "deriveWithBump" {
                                             let bump_members = c.args.last().ok_or(anyhow!("no last element in vector"))?.expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
                                             let bump_prop  = Ident::new(
@@ -1881,7 +1936,6 @@ impl ProgramInstruction {
             accounts.push(quote! {
                  pub token_metadata_program: Program<'info, Metadata>,
             });
-            // if it doesn't weirdly mess up the TokenStream or give stupid errors then we can put them in one quote macro 
             accounts.push(quote! {
                  pub rent: Sysvar<'info, Rent>, 
             })
@@ -2243,7 +2297,6 @@ impl ProgramModule {
             .iter()
             .map(|x| x.accounts_to_tokens())
             .collect();
-
         let imports: TokenStream = match !self.imports.is_empty() {
             true => {
                 let mut imports_vec: Vec<TokenStream> = vec![];
