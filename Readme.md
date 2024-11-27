@@ -24,10 +24,8 @@ cargo install --git https://github.com/Turbin3/poseidon
 poseidon compile --input "input.ts" --output "output.rs"
 ```
 
-Check out examples in the repo to learn how to write Poseidon Typescript which can be transpiled to anchor programs. There are vote, vault and escrow(.ts files and their tranpiled .rs files)
-
 ## Tutorial & Examples
 
 Go to [docs/src/tutorial.md](./docs/src/tutorial.md) to learn how to write your first Solana program in TypeScript using Poseidon and Anchor!
 
-For more examples, check out the [examples](./examples) directory. You’ll find examples of vote, vault, and escrow programs in both TypeScript and the corresponding Rust programs transpiled by Poseidon.
+For more examples, check out the [examples](./examples) directory. You’ll find examples of [vote](./examples/vote), [vault](./examples/vault), [escrow](./examples/escrow), and [favorites](./examples/favorites) programs in both TypeScript and the corresponding Rust programs transpiled by Poseidon.

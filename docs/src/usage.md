@@ -13,3 +13,5 @@ Check out [examples](https://github.com/Turbin3/poseidon/tree/master/examples) i
 2. Vault ([Rust](https://github.com/Turbin3/poseidon/blob/master/examples/vault/rust/vault.rs), [TypeScript](https://github.com/Turbin3/poseidon/blob/master/examples/vault/typescript/vault.ts))
 
 3. Escrow ([Rust](https://github.com/Turbin3/poseidon/blob/master/examples/escrow/rust/escrow.rs), [TypeScript](https://github.com/Turbin3/poseidon/blob/master/examples/escrow/typescript/escrow.ts))
+
+4. Favorites ([Rust](https://github.com/Turbin3/poseidon/blob/master/examples/favorites/rust/favorites.rs), [TypeScript](https://github.com/Turbin3/poseidon/blob/master/examples/favorites/typescript/favorites.ts))
