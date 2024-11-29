@@ -5,7 +5,7 @@ import {
   u64,
   Signer,
   Vec,
-  String,
+  Str,
 } from "@solanaturbine/poseidon";
 
 export default class FavoritesProgram {
@@ -14,8 +14,8 @@ export default class FavoritesProgram {
   setFavorites(
     owner: Signer,
     number: u64,
-    color: String<50>,
-    hobbies: Vec<String<50>, 5>,
+    color: Str<50>,
+    hobbies: Vec<Str<50>, 5>,
     favorites: Favorites,
   ): Result {
     favorites.derive(["favorites", owner.key]).initIfNeeded(owner);
@@ -28,6 +28,6 @@ export default class FavoritesProgram {
 
 export interface Favorites extends Account {
   number: u64;
-  color: String<50>;
-  hobbies: Vec<String<50>, 5>;
+  color: Str<50>;
+  hobbies: Vec<Str<50>, 5>;
 }

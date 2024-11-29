@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 declare_id!("11111111111111111111111111111111");
 #[program]
-pub mod testoor {
+pub mod favorites_program {
     use super::*;
     pub fn set_favorites(
         ctx: Context<SetFavoritesContext>,
@@ -17,8 +17,6 @@ pub mod testoor {
 }
 #[derive(Accounts)]
 pub struct SetFavoritesContext<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
     #[account(
         init_if_needed,
         payer = owner,
@@ -28,9 +26,10 @@ pub struct SetFavoritesContext<'info> {
         bump,
     )]
     pub favorites: Account<'info, Favorites>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
-
 #[account]
 pub struct Favorites {
     pub number: u64,
