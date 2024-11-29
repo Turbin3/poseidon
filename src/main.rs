@@ -10,7 +10,7 @@ use clap::{Parser as ClapParser, Subcommand};
 use parse_ts::parse_ts;
 use swc_ecma_ast::Module;
 
-use cli::{init, build_workspace, run_tests, sync_program_ids};
+use cli::{build_workspace, init, run_tests, sync_program_ids};
 use transpiler::transpile;
 
 #[derive(ClapParser, Debug)]
