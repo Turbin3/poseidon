@@ -28,9 +28,11 @@ pub fn init(name: &String) {
         return;
     }
 
-    execute_cmd(Command::new("anchor").args(["init", name.as_str()]));
+    let project_name = name.to_case(Case::Kebab);
 
-    let project_path = Path::new(&name);
+    execute_cmd(Command::new("anchor").args(["init", project_name.as_str()]));
+
+    let project_path = Path::new(&project_name);
 
     // Create the ts-programs directory
     let ts_programs_path = project_path.join("ts-programs");
