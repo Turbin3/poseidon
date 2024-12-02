@@ -1,7 +1,8 @@
+use anchor_lang::prelude::AccountInfo;
 use convert_case::{Case, Casing};
 use core::panic;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, quote_spanned};
 use std::io;
 use std::{
     collections::{HashMap, HashSet},
@@ -10,7 +11,7 @@ use std::{
 };
 use swc_common::{util::move_map::MoveMap, TypeEq};
 use swc_ecma_ast::{
-    BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
+    BindingIdent, Bool, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
     NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType,
     TsTypeParamInstantiation, TsTypeRef,
 };
@@ -29,6 +30,12 @@ pub struct Ta {
     authority: String,
     is_ata: bool,
 }
+#[derive(Debug, Clone)]
+pub struct Ma { // Mint account - Adds constraints for initializing mint accounts 
+    decimals:String,
+    authority:String,
+    freeze_authority:String,
+}
 #[derive(Clone, Debug)]
 
 pub struct InstructionAccount {
@@ -42,13 +49,16 @@ pub struct InstructionAccount {
     pub is_close: bool,
     pub is_mint: bool,
     pub ta: Option<Ta>,
+    pub ma:Option<Ma>,
     pub has_one: Vec<String>,
     pub close: Option<String>,
     pub seeds: Option<Vec<TokenStream>>,
     pub bump: Option<TokenStream>,
     pub payer: Option<String>,
     pub space: Option<u32>,
+    pub seeds_program:Option<TokenStream>,
     pub is_custom: bool,
+    pub is_metadata_acc:bool,
 }
 
 impl InstructionAccount {
@@ -64,13 +74,16 @@ impl InstructionAccount {
             is_initifneeded: false,
             is_mint: false,
             ta: None,
+            ma:None,
             has_one: vec![],
             close: None,
             seeds: None,
             bump: None,
             payer: None,
             space: None,
+            seeds_program:None,
             is_custom: false,
+            is_metadata_acc:false,
         }
     }
 
@@ -78,8 +91,8 @@ impl InstructionAccount {
         let name = Ident::new(&self.name, proc_macro2::Span::call_site());
         let of_type = &self.of_type;
         let constraints: TokenStream;
-        // this is evaluated this way coz, ta might not have seeds
-        if (self.seeds.is_none() & self.ta.is_none())
+        // this is evaluated this way coz, ta & ma might not have seeds
+        if (self.seeds.is_none() & self.ta.is_none() & self.ma.is_none())
             & (self.is_close | self.is_init | self.is_initifneeded)
         {
             panic!(
@@ -110,6 +123,19 @@ impl InstructionAccount {
                         token::mint = #mint,
                         token::authority = #authority,
                     }
+                }
+            }
+            None => quote!(),
+        };
+        let mint = match &self.ma {
+            Some(a) => {
+                let decimals = Ident::new(&a.decimals, proc_macro2::Span::call_site());
+                let authority = Ident::new(&a.authority, proc_macro2::Span::call_site());
+                let freeze_authority = Ident::new(&a.freeze_authority, proc_macro2::Span::call_site());
+                 quote! {
+                        mint::decimals = #decimals,
+                        mint::authority = #authority,
+                        mint::freeze_authority = #freeze_authority,
                 }
             }
             None => quote!(),
@@ -151,7 +177,15 @@ impl InstructionAccount {
                 quote! {}
             }
         };
-
+        let seeds_program = match &self.seeds_program {
+            Some(s) => {
+                quote!{
+                    seeds::program = #s,
+                }
+            } None => {
+                quote!{}
+            }
+        };
         let init = match self.is_init {
             true => quote! {init, #payer, #space},
             false => quote! {},
@@ -193,23 +227,30 @@ impl InstructionAccount {
                     #mutable
                     #seeds
                     #ata
+                    #mint
                     #has
                     #bump
                     #close
-
+                    #seeds_program
                 )]
             }
         }
         let check = if self.type_str == "UncheckedAccount" {
             quote! {
                 /// CHECK: This acc is safe
-            }
-        } else {
+            } 
+        } 
+        else if self.is_metadata_acc {
+                quote!{
+                    /// CHECK: Validate address by deriving pda
+                }
+        }
+        else {
             quote! {}
         };
         quote!(
-            #constraints
             #check
+            #constraints
             pub #name: #of_type,
         )
     }
@@ -232,6 +273,7 @@ pub struct ProgramInstruction {
     pub uses_system_program: bool,
     pub uses_token_program: bool,
     pub uses_associated_token_program: bool,
+    pub uses_token_metadata_program: bool,
     pub instruction_attributes: Option<Vec<TokenStream>>,
 }
 
@@ -246,6 +288,7 @@ impl ProgramInstruction {
             uses_system_program: false,
             uses_token_program: false,
             uses_associated_token_program: false,
+            uses_token_metadata_program: false,
             instruction_attributes: None,
         }
     }
@@ -293,6 +336,19 @@ impl ProgramInstruction {
                 ts_arg = quote! {
                     #ts_arg_ident
                 };
+            }
+            Expr::Lit(lit) => {
+                match lit {
+                    Lit::Bool(b) => {
+                    let ts_bool_value = b.value;
+                    ts_arg = quote! {
+                        #ts_bool_value
+                    };
+                }
+                _ => {
+                    panic!("{:#?} not provided in proper format", ts_arg_expr);
+                }
+                }
             }
             _ => {
                 panic!("{:#?} not provided in proper format", ts_arg_expr)
@@ -569,7 +625,9 @@ impl ProgramInstruction {
                             optional,
                         ),
                     );
+                    ix.uses_token_program = true;
                     program_mod.add_import("anchor_spl", "token", "Mint");
+                    program_mod.add_import("anchor_spl", "token", "Token");
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                     cur_ix_acc.is_mut = true;
                 } else if of_type == "TokenAccount" {
@@ -584,6 +642,22 @@ impl ProgramInstruction {
                     );
                     ix.uses_token_program = true;
                     program_mod.add_import("anchor_spl", "token", "TokenAccount");
+                    program_mod.add_import("anchor_spl", "token", "Token");
+                }
+                else if of_type == "Metadata" {
+                    ix_accounts.insert(
+                        name.clone(),
+                        InstructionAccount::new(
+                            snaked_name.clone(),
+                            quote! { UncheckedAccount<'info>},
+                            of_type,
+                            optional,
+                        ),
+                    );
+                    ix.uses_token_program = true;
+                    ix.uses_system_program = true;
+                    ix.uses_token_metadata_program = true; 
+                    program_mod.add_import("anchor_spl", "metadata", "mpl_token_metadata");
                     program_mod.add_import("anchor_spl", "token", "Token");
                 }
             } else if custom_accounts.contains_key(&of_type) {
@@ -718,7 +792,52 @@ impl ProgramInstruction {
                                             );
                                             cur_ix_acc.is_mut = true;
                                         }
-                                        if cur_ix_acc.type_str != "AssociatedTokenAccount"{
+                                        else if cur_ix_acc.type_str == "Metadata" {
+                                            let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
+                                            let mut seeds_token = ix.get_seeds(seeds, false)?;
+                                            //automatically adds the token_metadata_program key or id to the seeds 
+                                            //Metadata's key must match seed of ['metadata', program id, mint], the order matters
+                                            //this feels kinds hacky but this was the only thing i came up with to make the seeds be in order 
+                                            if !seeds_token.is_empty() {
+                                                seeds_token.insert(seeds_token.len() / 2, quote!{token_metadata_program.key().as_ref()});
+                                            } 
+                                            cur_ix_acc.is_metadata_acc = true;
+                                            cur_ix_acc.is_mut = true;
+                                            cur_ix_acc.bump = Some(quote!{
+                                                bump
+                                            });
+                                            cur_ix_acc.seeds = Some(seeds_token);
+                                            cur_ix_acc.seeds_program = Some(quote!{
+                                                token_metadata_program.key()
+                                            });
+                                        }
+                                        else if cur_ix_acc.type_str == "Mint" {
+                                             let decimals = derive_args[0].expr.as_ident().ok_or(PoseidonError::MemberNotFound)?.sym.as_ref();
+                                             let decimals_ident = Ident::new(decimals, proc_macro2::Span::call_site());
+                                             let authority = derive_args[1].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            let freeze_authority = derive_args[2].expr.as_member().ok_or(PoseidonError::MemberNotFound)?.obj.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
+                                            cur_ix_acc.ma = Some(
+                                                Ma {
+                                                    decimals:decimals.to_string(),
+                                                    authority: authority.to_case(Case::Snake),
+                                                    freeze_authority: freeze_authority.to_case(Case::Snake)
+                                                }
+                                            );
+                                            cur_ix_acc.is_mut = true; 
+                                            let mut ix_attribute_token :Vec<TokenStream> = vec![];
+                                            //iterate through all the instruction arguments and find a match for the decimals arg name, we do this so we can get the type, it will be better than hardcoding a u8 type
+                                             for arg in ix.args.iter() {
+                                                if arg.name == decimals {
+                                                    let type_ident = &arg.of_type;
+
+                                                    ix_attribute_token.push(quote! {
+                                                        #decimals_ident : #type_ident
+                                                    })
+                                                }
+                                            }
+                                            ix.instruction_attributes = Some(ix_attribute_token);
+                                        }
+                                        if cur_ix_acc.type_str != "AssociatedTokenAccount" && cur_ix_acc.type_str != "Metadata" && cur_ix_acc.type_str != "Mint"  {
                                             let seeds = &derive_args[0].expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
                                             let seeds_token = ix.get_seeds(seeds, false)?;
                                             cur_ix_acc.bump = Some(quote!{
@@ -727,7 +846,7 @@ impl ProgramInstruction {
                                             if !seeds_token.is_empty() {
                                                 cur_ix_acc.seeds = Some(seeds_token);
                                             }
-                                        }
+                                        } 
                                         if prop == "deriveWithBump" {
                                             let bump_members = c.args.last().ok_or(anyhow!("no last element in vector"))?.expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
                                             let bump_prop  = Ident::new(
@@ -1250,7 +1369,7 @@ impl ProgramInstruction {
                                                 }
                                             }
                                         },
-                                        "revoke" => {
+                                        "revoke" => { 
                                             program_mod.add_import("anchor_spl", "token", "revoke");
                                             program_mod.add_import("anchor_spl", "token", "Revoke");
                                             let source_acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
@@ -1442,6 +1561,147 @@ impl ProgramInstruction {
                                             }
                                         },
                                         _ => {}
+                                    }
+                                }
+                                if obj == "MetadataProgram" {
+                                    match prop {
+                                        "createMetadataAccountsV3" => {
+                                            program_mod.add_import("anchor_spl", "metadata", "create_metadata_accounts_v3");
+                                            program_mod.add_import("anchor_spl", "metadata", "CreateMetadataAccountsV3");
+                                            program_mod.add_import("anchor_spl", "metadata","Metadata");
+                                            program_mod.add_import("anchor_spl", "metadata", "mpl_token_metadata");
+                                            program_mod.add_import("anchor_spl", "token", "Mint");
+                                            // parse the create_metadata_v3 class constructor instantiation
+                                            let mut create_metadata_v3_args = vec![
+                                                String::from("payer_value"),  //Default value placeholders , can we just make them empty strings?
+                                                String::from("mint_authority_value"),
+                                                String::from("update_authority_value"),
+                                                String::from("mint_account_value"),
+                                           ];
+                                            if let Some(expr) = c.args[0].expr.as_new() {
+                                                // This gets the arguments of the new CreateMetadataV3(...)
+                                                if let Some(args) = &expr.args {
+                                                    args.iter().enumerate().for_each(|arg| {
+                                                        match arg.1.expr.as_ident() {
+                                                            Some(ident) => create_metadata_v3_args[arg.0] = ident.sym.to_string(),
+                                                            _ => panic!("{}",PoseidonError::IdentNotFound),
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                            let payer_acc_ident = Ident::new(&create_metadata_v3_args[0],proc_macro2::Span::call_site());
+                                            let mint_authority_acc_ident = Ident::new( &create_metadata_v3_args[1],proc_macro2::Span::call_site());
+                                            let update_authority_acc_ident = Ident::new(&create_metadata_v3_args[2],proc_macro2::Span::call_site());
+                                            let mint_acc_ident = Ident::new(&create_metadata_v3_args[3],proc_macro2::Span::call_site());
+                                             // parse the data_v2 class constructor instantiation
+                                             // This gets the arguments of the DataV2(...)
+                                            let mut data_v2_args = vec![
+                                                String::from("token_name"),
+                                                String::from("token_symbol"),
+                                                String::from("token_uri"),
+                                                String::from("seller_fee_basis_points"),
+                                            ];
+                                            
+                                            //Initialize option arguments with none as default 
+                                            let mut creators = quote!(None);
+                                            let mut collection = quote!(None);
+                                            let mut uses = quote!(None);
+
+                                            if let Some(expr) = c.args[1].expr.as_new() {
+                                                if let Some(args) = &expr.args {
+                                                    for (index, arg) in args.iter().enumerate() {
+                                                        if index >= data_v2_args.len() {
+                                                            match &arg.expr {
+                                                                // For regular identifiers (token_name, token_symbol, token_uri)
+                                                                expr if expr.is_ident() => {
+                                                                    if let Some(ident) = expr.as_ident() {
+                                                                        data_v2_args[index] = ident.sym.to_string();
+                                                                    }
+                                                                },
+                                                                    // For function calls like none() and some() 
+                                                                    expr if expr.is_call() => {
+                                                                        if let Some(call) = expr.as_call() {
+                                                                            if let Some(callee) = call.callee.as_expr() {
+                                                                                if let Some(ident) = callee.as_ident() {
+                                                                                    let option_value = match index {
+                                                                                                        4 => &mut creators,
+                                                                                                        5 => &mut collection,
+                                                                                                        6 => &mut uses,
+                                                                                                        _ => continue,
+                                                                                                    };
+                                                                                    match ident.sym.to_string().as_str() {
+                                                                                        // if its "none" it remains as the default value
+                                                                                        "none" => (),
+                                                                                        // parsing this is a way more complex , we have to take each of the types or args into consideration
+                                                                                        "some" =>  if !call.args.is_empty() {
+                                                                                            handle_some_option(call, &ix_accounts,option_value)?
+                                                                                        }
+                                                                                        _ => panic!("Unknown function call: {}", ident.sym),
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                _ => println!("Unhandled argument type at index {}", index),
+                                                            }
+                                                        }
+                                                    } 
+                                                }
+                                            }
+                                            // Create Idents
+                                            let token_name_ident = Ident::new(&data_v2_args[0], proc_macro2::Span::call_site());
+                                            let token_symbol_ident = Ident::new(&data_v2_args[1], proc_macro2::Span::call_site());
+                                            let token_uri_ident = Ident::new(&data_v2_args[2], proc_macro2::Span::call_site());
+                                            let seller_fee_basis_points_ident = Ident::new(&data_v2_args[3], proc_macro2::Span::call_site());
+                                            let is_mutable_expr = &c.args[2].expr;
+                                            let update_authority_is_signer_expr = &c.args[3].expr;
+                                            let is_mutable = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &is_mutable_expr)?;
+                                            let update_authority_is_signer = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, & update_authority_is_signer_expr)?;
+                                            
+                                            let mut collection_details = quote!{None};
+
+                                            if let Some(call) = c.args[4].expr.as_call() {
+                                                      if let Some(callee) = call.callee.as_expr() {
+                                                            if let Some(ident) = callee.as_ident() {
+                                                                     match ident.sym.to_string().as_str() {
+                                                                            "none" => (),
+                                                                            "some" => todo!(),
+                                                                            _ => panic!("Unknown function call: {}", ident.sym),
+                                                                    }
+                                                     }
+                                                }
+                                            }
+
+                                            ix_body.push(quote!{
+                                                        let token_data: mpl_token_metadata::types::DataV2 = mpl_token_metadata::types::DataV2 {
+                                                            name: #token_name_ident,
+                                                            symbol: #token_symbol_ident,
+                                                            uri: #token_uri_ident,
+                                                            seller_fee_basis_points:#seller_fee_basis_points_ident,
+                                                            creators: #creators,
+                                                            collection: #collection,
+                                                            uses: #uses,
+                                                        };
+                                                        let cpi_accounts = CreateMetadataAccountsV3 {
+                                                            payer: ctx.accounts.#payer_acc_ident.to_account_info(),
+                                                            update_authority: ctx.accounts.#update_authority_acc_ident.to_account_info(),
+                                                            mint: ctx.accounts.#mint_acc_ident.to_account_info(),
+                                                            metadata: ctx.accounts.metadata_account.to_account_info(),
+                                                            mint_authority: ctx.accounts.#mint_authority_acc_ident.to_account_info(),
+                                                            system_program: ctx.accounts.system_program.to_account_info(),
+                                                            rent: ctx.accounts.rent.to_account_info(),
+                                                        };
+                                                        let cpi_ctx = CpiContext::new(ctx.accounts.token_metadata_program.to_account_info(), cpi_accounts);
+                                                        create_metadata_accounts_v3(
+                                                            cpi_ctx, 
+                                                            token_data,
+                                                            #is_mutable,
+                                                            #update_authority_is_signer,
+                                                            #collection_details,
+                                                        )?;
+                                            })
+                                        }
+                                        _ => ()
                                     }
                                 }
                             }
@@ -1670,6 +1930,14 @@ impl ProgramInstruction {
         if self.uses_system_program {
             accounts.push(quote! {
                 pub system_program: Program<'info, System>,
+            })
+        }
+        if self.uses_token_metadata_program {
+            accounts.push(quote! {
+                 pub token_metadata_program: Program<'info, Metadata>,
+            });
+            accounts.push(quote! {
+                 pub rent: Sysvar<'info, Rent>, 
             })
         }
         let info_token_stream = match accounts.is_empty() {
@@ -2029,7 +2297,6 @@ impl ProgramModule {
             .iter()
             .map(|x| x.accounts_to_tokens())
             .collect();
-
         let imports: TokenStream = match !self.imports.is_empty() {
             true => {
                 let mut imports_vec: Vec<TokenStream> = vec![];
@@ -2087,4 +2354,130 @@ impl ProgramModule {
         };
         Ok(program)
     }
+}
+
+//handles the complex some cases for the create_metadata_v3
+fn handle_some_option(
+    call: &CallExpr,
+    ix_accounts: &HashMap<String, InstructionAccount>,
+    option_value: &mut proc_macro2::TokenStream,
+) -> Result<()> {
+    if let Some(new_expr) = call.args[0].expr.as_new() {
+        match new_expr.callee.as_ident() {
+            Some(constructor_ident) => {
+                match constructor_ident.sym.to_string().as_str() {
+                    "Vec" => {
+                        // Handle Vec<Creator> case
+                        if let Some(vec_args) = &new_expr.args {
+                            if let Some(creator_new) = vec_args[0].expr.as_new() {
+                                if let Some(creator_args) = &creator_new.args {
+                                    let key = creator_args[0]
+                                        .expr
+                                        .as_ident()
+                                        .ok_or(PoseidonError::IdentNotFound)?
+                                        .sym
+                                        .as_ref();
+                                    let verified = creator_args[1]
+                                        .expr
+                                        .as_ident()
+                                        .ok_or(PoseidonError::IdentNotFound)?
+                                        .sym
+                                        .as_ref();
+                                    let share = creator_args[2]
+                                        .expr
+                                        .as_ident()
+                                        .ok_or(PoseidonError::IdentNotFound)?
+                                        .sym
+                                        .as_ref();
+
+                                    let key_ident = Ident::new(key, proc_macro2::Span::call_site());
+                                    let verified_ident = Ident::new(verified, proc_macro2::Span::call_site());
+                                    let share_ident = Ident::new(share, proc_macro2::Span::call_site());
+
+                                    *option_value = quote! {
+                                        Some(vec![mpl_token_metadata::types::Creator {
+                                            key: #key_ident,
+                                            verified: #verified_ident,
+                                            share: #share_ident
+                                        }]);
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    "Collection" => {
+                        // Handle Collection case
+                        if let Some(collection_args) = &new_expr.args {
+                            // Extract the value for verified and key
+                            let verified_expr = &collection_args[0].expr;
+                            let verified = ProgramInstruction::get_rs_arg_from_ts_arg(&ix_accounts, &verified_expr)?;
+                            let key_expr = collection_args[1]
+                                .expr
+                                .as_ident()
+                                .ok_or(PoseidonError::IdentNotFound)?
+                                .sym
+                                .as_ref();
+                            let key = Ident::new(key_expr, proc_macro2::Span::call_site());
+
+                            *option_value = quote! {
+                                Some(mpl_token_metadata::types::Collection {
+                                    verified: #verified,
+                                    key: #key
+                                })
+                            }
+                        }
+                    }
+                    "Uses" => {
+                        // Handle Uses case
+                        if let Some(uses_args) = &new_expr.args {
+                            let mut enum_type = "";
+                            let mut enum_variant = "";
+
+                            if let Some(expr) = uses_args[0].expr.as_member() {
+                                // Extract the object (enum type) and property
+                                if let Some(obj) = expr.obj.as_ident() {
+                                    enum_type = obj.sym.as_ref(); // "UseMethod"
+                                    enum_variant = expr
+                                        .prop
+                                        .as_ident()
+                                        .ok_or(PoseidonError::IdentNotFound)?
+                                        .sym
+                                        .as_ref(); // "Burn" for example
+                                }
+                            }
+
+                            let remaining = uses_args[1]
+                                .expr
+                                .as_ident()
+                                .ok_or(PoseidonError::IdentNotFound)?
+                                .sym
+                                .as_ref();
+                            let total = uses_args[2]
+                                .expr
+                                .as_ident()
+                                .ok_or(PoseidonError::IdentNotFound)?
+                                .sym
+                                .as_ref();
+
+                            let remaining_ident = Ident::new(remaining, proc_macro2::Span::call_site());
+                            let total_ident = Ident::new(total, proc_macro2::Span::call_site());
+                            let enum_type_ident = Ident::new(enum_type, proc_macro2::Span::call_site());
+                            let enum_variant_ident = Ident::new(enum_variant, proc_macro2::Span::call_site());
+
+                            *option_value = quote! {
+                                Some(mpl_token_metadata::types::Uses {
+                                    use_method: #enum_type_ident::#enum_variant_ident,
+                                    remaining: #remaining_ident,
+                                    total: #total_ident
+                                })
+                            };
+                        }
+                    }
+                    _ => println!("Unknown constructor: {}", constructor_ident.sym),
+                }
+            }
+            None => println!("Could not get constructor identifier"),
+        }
+    }
+    Ok(())
 }
