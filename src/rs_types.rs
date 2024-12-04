@@ -305,7 +305,7 @@ impl ProgramInstruction {
                 // }
                 if is_account_struct {
                     ts_arg = quote! {
-                        #ts_arg_obj_ident.#ts_arg_prop_ident
+                        #ts_arg_obj_ident
                     };
                 } else {
                     ts_arg = quote! {
