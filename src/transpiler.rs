@@ -1,6 +1,9 @@
 use core::panic;
 use rust_format::{Formatter, PrettyPlease};
-use std::{collections::HashMap, fs::{self, File}, io::Write};
+use std::{
+    collections::HashMap,
+    fs::{self},
+};
 
 use crate::rs_types::{ProgramAccount, ProgramModule};
 use anyhow::{anyhow, Result};
@@ -66,7 +69,6 @@ pub fn transpile(module: &Module, output_file_name: &String) -> Result<()> {
     let extracted_account_struct = extract_accounts_structs(&formatted_program);
 
     for account_struct in extracted_account_struct {
-
         let (header, reordered_account_struct) = reorder_struct(&account_struct)?;
 
         formatted_program = replace_struct(&formatted_program, &header, &reordered_account_struct);
@@ -94,7 +96,7 @@ fn extract_accounts_structs(input: &str) -> Vec<String> {
 
 fn reorder_struct(input: &str) -> Result<(String, String)> {
     let field_regex = Regex::new(
-        r"(?ms)^(?P<attrs>(\s*#\[[^\]]*\](\s*|.*?))*?)\s*pub\s+(?P<name>\w+):\s+(?P<type>[^\n]+),"
+        r"(?ms)^(?P<attrs>(\s*#\[[^\]]*\](\s*|.*?))*?)\s*pub\s+(?P<name>\w+):\s+(?P<type>[^\n]+),",
     )
     .unwrap();
 

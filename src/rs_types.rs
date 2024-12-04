@@ -4,9 +4,8 @@ use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 use swc_ecma_ast::{
-    BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
-    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType,
-    TsTypeParamInstantiation, TsTypeRef,
+    BindingIdent, CallExpr, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr, Stmt,
+    TsExprWithTypeArgs, TsInterfaceDecl, TsType, TsTypeParamInstantiation,
 };
 
 use crate::{
@@ -26,7 +25,7 @@ pub struct Ta {
 pub struct Mint {
     mint_authority_token: TokenStream,
     decimals_token: TokenStream,
-    freeze_authority_token: Option<TokenStream>
+    freeze_authority_token: Option<TokenStream>,
 }
 #[derive(Clone, Debug)]
 
@@ -78,8 +77,12 @@ impl InstructionAccount {
         let of_type = &self.of_type;
         let constraints: TokenStream;
         // this is evaluated this way coz, ta might not have seeds
-        if (self.mint.is_none() & self.seeds.is_none() & self.ta.is_none()) & (self.is_close | self.is_init | self.is_initifneeded) {
-            panic!(r##"use derive or deriveWithBump with all the necessary arguments while using "init" or "initIfNeeded" or "close" "##);
+        if (self.mint.is_none() & self.seeds.is_none() & self.ta.is_none())
+            & (self.is_close | self.is_init | self.is_initifneeded)
+        {
+            panic!(
+                r##"use derive or deriveWithBump with all the necessary arguments while using "init" or "initIfNeeded" or "close" "##
+            );
         }
         let payer = match &self.payer {
             Some(s) => {
@@ -115,20 +118,20 @@ impl InstructionAccount {
                 let decimal_token = &m.decimals_token;
                 let mint_auth_token = &m.mint_authority_token;
 
-                if let Some(freeze_auth) =  &m.freeze_authority_token {
-                    quote!{
+                if let Some(freeze_auth) = &m.freeze_authority_token {
+                    quote! {
                         mint::decimals = #decimal_token,
                         mint::authority = #mint_auth_token,
                         mint::freeze_authority = #freeze_auth,
                     }
                 } else {
-                    quote!{
+                    quote! {
                         mint::decimals = #decimal_token,
                         mint::authority = #mint_auth_token,
                     }
                 }
             }
-            None => quote!{},
+            None => quote! {},
         };
         let close = match &self.close {
             Some(c) => {
@@ -263,7 +266,11 @@ impl ProgramInstruction {
         }
     }
 
-    pub fn get_rs_arg_from_ts_arg(&mut self, ts_arg_expr: &Expr, is_account_struct: bool) -> Result<TokenStream> {
+    pub fn get_rs_arg_from_ts_arg(
+        &mut self,
+        ts_arg_expr: &Expr,
+        is_account_struct: bool,
+    ) -> Result<TokenStream> {
         let ts_arg: TokenStream;
         let mut ix_attribute_token: Vec<TokenStream> = vec![];
         match ts_arg_expr {
@@ -305,7 +312,6 @@ impl ProgramInstruction {
                         ctx.accounts.#ts_arg_obj_ident.#ts_arg_prop_ident
                     };
                 }
-                
             }
             Expr::Ident(i) => {
                 let ts_arg_str = i.sym.as_ref();
@@ -329,9 +335,9 @@ impl ProgramInstruction {
                 };
             }
             Expr::Lit(Lit::Num(literal_value)) => {
-                let literal_token =  Literal::u8_unsuffixed(literal_value.value as u8);
+                let literal_token = Literal::u8_unsuffixed(literal_value.value as u8);
 
-                ts_arg = quote!{#literal_token}
+                ts_arg = quote! {#literal_token}
             }
             _ => {
                 panic!("{:#?} not provided in proper format", ts_arg_expr)
@@ -770,7 +776,7 @@ impl ProgramInstruction {
                                             if !seeds_token.is_empty() {
                                                 cur_ix_acc.seeds = Some(seeds_token);
                                             }
-                                            
+
                                         }
                                         if prop == "deriveWithBump" {
                                             let bump_members = c.args.last().ok_or(anyhow!("no last element in vector"))?.expr.as_member().ok_or(PoseidonError::MemberNotFound)?;
