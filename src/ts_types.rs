@@ -17,12 +17,12 @@ pub const STANDARD_TYPES: [&str; 16] = [
     "isize",
     "Boolean",
     "Uint8Array",
-    "String",
+    "Str",
     "Pubkey",
 ];
 
 pub const STANDARD_ARRAY_TYPES: [&str; 13] = [
-    "Vec<String>",
+    "Vec<Str>",
     "Vec<u8>",
     "Vec<i8>",
     "Vec<u16>",
@@ -51,8 +51,8 @@ use crate::errors::PoseidonError;
 
 pub fn rs_type_from_str(str: &str) -> Result<TokenStream, Error> {
     match str {
-        "String" => Ok(quote! { String }),
-        "Vec<String>" => Ok(quote! { Vec<String> }),
+        "Str" => Ok(quote! { String }),
+        "Vec<Str>" => Ok(quote! { Vec<String> }),
         "Vec<u8>" => Ok(quote! { Vec<u8> }),
         "Vec<i8>" => Ok(quote! { Vec<i8> }),
         "Vec<u16>" => Ok(quote! { Vec<u16> }),

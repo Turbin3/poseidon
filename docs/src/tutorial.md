@@ -157,12 +157,10 @@ When you're initializing account, Poseidon automatically adds the SystemProgram 
 
 The logic for `upvote` and `downvote` is quite simple—just add or subtract by 1. The only thing to be aware of is that you need to assign the result back to where it’s stored, e.g. `state.vote`. Otherwise, the value won’t be updated after the instruction is executed.
 
-The final step to complete this program is to run the command below to get your correct program ID and replace `PROGRAM_ID` from `1111...1111` to your actual one. For example, mine is `At2E...Cng1`.
+The final step to complete this program is to run the command below to get your correct program ID and replace, if the program ID is not synced yet.
 
 ```bash
-$ anchor keys list
-# You'll get something similar, but it will definitely be different
-vote_program: At2EEHZ4zq2roeR5Cba6dryYEsmsHz7MKt9tjUCpCng1
+$ poseidon sync
 ```
 
 ## Test Your Program!
@@ -174,6 +172,9 @@ poseidon --help
 Usage: poseidon <COMMAND>
 
 Commands:
+  build    Build Typescript programs in workspace
+  test     Run anchor tests in the workspace
+  sync     Sync anchor keys in poseidon programs
   compile  Transpile a Typescript program to a Rust program
   init     Initializes a new workspace
   help     Print this message or the help of the given subcommand(s)
@@ -213,6 +214,12 @@ Obviously, we’ll use the TypeScript code to generate and replace the Rust code
 ```
 
 If you’re in the root directory of the program, use the following command:
+
+```bash
+poseidon build
+```
+
+And if you're not in the root directory or just want to compile by specifying the location, use the following command:
 
 ```bash
 poseidon compile -i ts-programs/src/voteProgram.ts -o programs/vote-program/src/lib.rs
@@ -278,7 +285,7 @@ describe("vote program", () => {
 For testing it locally, we can run
 
 ```bash
-anchor test
+poseidon test
 ```
 
 This command will build the program, start a local validator with the program deployed, and run all the tests in the `tests` folder. This is a quick way to check if your program works correctly. Ideally, you should see all your tests pass like this:

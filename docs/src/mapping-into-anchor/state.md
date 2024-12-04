@@ -109,3 +109,14 @@ state.vote = state.vote.add(1);
 // decrement the state
 state.vote = state.vote.sub(1);
 ```
+
+## Poseidon Type Reference
+
+| Type    | Anchor  | Poseidon  |
+| ------- | ---     | ---       |
+| Boolean | `bool`  | `Boolean` |
+| Integer | `u8/u16/u32/i8/i16/i32` | `u8/u16/u32/i8/i16/i32` |
+| String  | `String`  | `String<N>` |
+| Vector  | `Vec<T>`  | `Vec<T, N>` |
+
+where `N` is the max length of the type.

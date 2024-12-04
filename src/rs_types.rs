@@ -4,7 +4,9 @@ use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 use swc_ecma_ast::{
-    BindingIdent, CallExpr, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsType, TsTypeParamInstantiation,
+    BindingIdent, CallExpr, Callee, ClassExpr, ClassMethod, Expr, ExprOrSpread, Lit, MemberExpr,
+    NewExpr, Stmt, TsExprWithTypeArgs, TsInterfaceDecl, TsKeywordTypeKind, TsType,
+    TsTypeParamInstantiation, TsTypeRef,
 };
 
 use crate::{
@@ -193,7 +195,6 @@ impl InstructionAccount {
                 } else {
                     quote! {init_if_needed, #payer,}
                 }
-                
             }
             false => quote! {},
         };
@@ -261,6 +262,7 @@ impl ProgramInstruction {
             instruction_attributes: None,
         }
     }
+
     pub fn get_rs_arg_from_ts_arg(&mut self, ts_arg_expr: &Expr, is_account_struct: bool) -> Result<TokenStream> {
         let ts_arg: TokenStream;
         let mut ix_attribute_token: Vec<TokenStream> = vec![];
@@ -286,6 +288,7 @@ impl ProgramInstruction {
                     &ts_arg_prop.to_case(Case::Snake),
                     proc_macro2::Span::call_site(),
                 );
+
                 // if let Some(_cur_ix_acc) = ix_accounts.get(ts_arg_obj){
                 //     ts_arg = quote! {
                 //         ctx.accounts.#ts_arg_obj_ident.#ts_arg_prop_ident
@@ -339,10 +342,14 @@ impl ProgramInstruction {
         }
         Ok(ts_arg)
     }
-    pub fn get_seeds(&mut self, seeds: &Vec<Option<ExprOrSpread>>, is_signer_seeds: bool) -> Result<Vec<TokenStream>> {
+    pub fn get_seeds(
+        &mut self,
+        seeds: &Vec<Option<ExprOrSpread>>,
+        is_signer_seeds: bool,
+    ) -> Result<Vec<TokenStream>> {
         let mut seeds_token: Vec<TokenStream> = vec![];
         let mut ix_attribute_token: Vec<TokenStream> = vec![];
-        let mut is_bump_passed : bool = false;
+        let mut is_bump_passed: bool = false;
         for (index, elem) in seeds.into_iter().flatten().enumerate() {
             match *(elem.expr.clone()) {
                 Expr::Lit(Lit::Str(seedstr)) => {
@@ -352,36 +359,43 @@ impl ProgramInstruction {
                     });
                 }
                 Expr::Member(m) => {
-                    let seed_prop = m.prop
-                            .as_ident()
-                            .ok_or(PoseidonError::IdentNotFound)?
-                            .sym
-                            .as_ref();
+                    let seed_prop = m
+                        .prop
+                        .as_ident()
+                        .ok_or(PoseidonError::IdentNotFound)?
+                        .sym
+                        .as_ref();
 
-                    let seed_prop_ident = Ident::new(&seed_prop.to_string().to_case(Case::Snake), Span::call_site());
-                    let seed_obj = m.obj
-                            .as_ident()
-                            .ok_or(PoseidonError::IdentNotFound)?
-                            .sym
-                            .as_ref();
-                    let seed_obj_ident = Ident::new(&seed_obj.to_string().to_case(Case::Snake), Span::call_site());
-                    if seed_prop == "key"{
+                    let seed_prop_ident = Ident::new(
+                        &seed_prop.to_string().to_case(Case::Snake),
+                        Span::call_site(),
+                    );
+                    let seed_obj = m
+                        .obj
+                        .as_ident()
+                        .ok_or(PoseidonError::IdentNotFound)?
+                        .sym
+                        .as_ref();
+                    let seed_obj_ident = Ident::new(
+                        &seed_obj.to_string().to_case(Case::Snake),
+                        Span::call_site(),
+                    );
+                    if seed_prop == "key" {
                         if !is_signer_seeds {
                             seeds_token.push(quote! {
                                 #seed_obj_ident.key().as_ref()
                             })
                         } else {
-                            seeds_token.push(quote!{
+                            seeds_token.push(quote! {
                                 ctx.accounts.#seed_obj_ident.to_account_info().key.as_ref()
                             });
                         }
-                    } else if is_signer_seeds & (seeds.len() == index+1) {
-                        seeds_token.push(quote!{
+                    } else if is_signer_seeds & (seeds.len() == index + 1) {
+                        seeds_token.push(quote! {
                             &[ctx.accounts.#seed_obj_ident.#seed_prop_ident]
                         });
                         is_bump_passed = true;
                     }
-                    
                 }
                 Expr::Call(c) => {
                     let seed_members = c
@@ -397,10 +411,17 @@ impl ProgramInstruction {
                             .ok_or(PoseidonError::IdentNotFound)?
                             .sym
                             .as_ref();
-                        let seed_obj_ident = Ident::new(&seed_obj.to_string().to_case(Case::Snake), Span::call_site());
-                        let seed_member_prop = seed_members.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
-                        if seed_member_prop == "toBytes"
-                        {
+                        let seed_obj_ident = Ident::new(
+                            &seed_obj.to_string().to_case(Case::Snake),
+                            Span::call_site(),
+                        );
+                        let seed_member_prop = seed_members
+                            .prop
+                            .as_ident()
+                            .ok_or(PoseidonError::IdentNotFound)?
+                            .sym
+                            .as_ref();
+                        if seed_member_prop == "toBytes" {
                             if !is_signer_seeds {
                                 seeds_token.push(quote! {
                                     #seed_obj_ident.to_le_bytes().as_ref()
@@ -410,9 +431,11 @@ impl ProgramInstruction {
                                     &#seed_obj_ident.to_le_bytes()
                                 });
                             }
-                            
                         }
-                        if is_signer_seeds & (seed_member_prop == "getBump") & (seeds.len() == index+1) {
+                        if is_signer_seeds
+                            & (seed_member_prop == "getBump")
+                            & (seeds.len() == index + 1)
+                        {
                             seeds_token.push(quote! {
                                 &[ctx.bumps.#seed_obj_ident]
                             });
@@ -472,7 +495,6 @@ impl ProgramInstruction {
                                     &ctx.accounts.#seed_obj_ident.#seed_prop_ident.to_le_bytes()[..]
                                 })
                             }
-                            
                         }
                     }
                 }
@@ -867,7 +889,7 @@ impl ProgramInstruction {
                                                         [#(#seed_tokens_vec),*]
                                                     ];
                                                 };
-                                                
+
                                                 ix_body.push(quote!{
                                                     let transfer_accounts = Transfer {
                                                         from: ctx.accounts.#from_acc_ident.to_account_info(),
@@ -933,8 +955,8 @@ impl ProgramInstruction {
                                                     let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
 
                                                     let cpi_ctx = CpiContext::new_with_signer(
-                                                        ctx.accounts.token_program.to_account_info(), 
-                                                        cpi_accounts, 
+                                                        ctx.accounts.token_program.to_account_info(),
+                                                        cpi_accounts,
                                                         signer_seeds
                                                     );
                                                     transfer_spl(cpi_ctx, #amount)?;
@@ -985,7 +1007,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         burn(cpi_ctx, #amount)?;
                                                     })
 
@@ -999,7 +1021,7 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         burn(cpi_ctx, #amount)?;
                                                     })
                                                 }
@@ -1065,8 +1087,9 @@ impl ProgramInstruction {
                                             let delegate_acc_ident = Ident::new(&delegate_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let amount_expr = &c.args[3].expr;
+
                                             let amount = ix.get_rs_arg_from_ts_arg(&amount_expr, false)?;
-                                            
+
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     let seeds = &c.args.get(4).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
@@ -1087,7 +1110,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         approve(cpi_ctx, #amount)?;
                                                     });
                                                 } else {
@@ -1100,7 +1123,7 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         approve(cpi_ctx, #amount)?;
                                                     })
                                                 }
@@ -1144,7 +1167,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         approve_checked(cpi_ctx, #amount, #decimal)?;
                                                     });
                                                 } else {
@@ -1158,7 +1181,7 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         approve_checked(cpi_ctx, #amount, #decimal)?;
                                                     })
                                                 }
@@ -1193,7 +1216,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         close_account(close_cpi_ctx)?;
                                                     });
                                                 } else {
@@ -1206,12 +1229,12 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         close_account(close_cpi_ctx)?;
                                                     });
                                                 }
                                             }
-                                            
+
                                         },
                                         "freezeAccount" => {
                                             program_mod.add_import("anchor_spl", "token", "freeze_account");
@@ -1222,7 +1245,7 @@ impl ProgramInstruction {
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-        
+
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
@@ -1244,7 +1267,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         freeze_account(cpi_ctx)?;
                                                     })
                                                 } else {
@@ -1257,7 +1280,7 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         freeze_account(cpi_ctx)?;
                                                     });
                                                 }
@@ -1272,7 +1295,7 @@ impl ProgramInstruction {
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let mint_acc_ident = Ident::new(&mint_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let auth_acc_ident = Ident::new(&auth_acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-      
+
                                             if let Some(cur_ix_acc) = ix_accounts.get(auth_acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     let seeds = &c.args.get(3).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
@@ -1294,7 +1317,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         initialize_account3(cpi_ctx)?;
                                                     })
                                                 } else {
@@ -1307,7 +1330,7 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         initialize_account3(cpi_ctx)?;
                                                     });
                                                 }
@@ -1341,7 +1364,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         revoke(cpi_ctx)?;
                                                     })
                                                 } else {
@@ -1353,7 +1376,7 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         revoke(cpi_ctx)?;
                                                     });
                                                 }
@@ -1364,7 +1387,7 @@ impl ProgramInstruction {
                                             program_mod.add_import("anchor_spl", "token", "SyncNative");
                                             let acc = c.args[0].expr.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let acc_ident = Ident::new(&acc.to_case(Case::Snake), proc_macro2::Span::call_site());
-   
+
                                             if let Some(cur_ix_acc) = ix_accounts.get(acc){
                                                 if cur_ix_acc.seeds.is_some() {
                                                     let seeds = &c.args.get(1).ok_or(anyhow!("Pass the seeds array argument"))?.expr.as_array().ok_or(anyhow!("expected an array"))?.elems;
@@ -1384,7 +1407,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         sync_native(cpi_ctx)?;
                                                     })
                                                 } else {
@@ -1395,7 +1418,7 @@ impl ProgramInstruction {
                                                                 account: ctx.accounts.#acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         sync_native(cpi_ctx)?;
                                                     });
                                                 }
@@ -1432,7 +1455,7 @@ impl ProgramInstruction {
                                                             },
                                                             signer_seeds
                                                         );
-        
+
                                                         thaw_account(cpi_ctx)?;
                                                     })
                                                 } else {
@@ -1445,7 +1468,7 @@ impl ProgramInstruction {
                                                                 authority: ctx.accounts.#auth_acc_ident.to_account_info(),
                                                             },
                                                         );
-        
+
                                                         thaw_account(cpi_ctx)?;
                                                     });
                                                 }
@@ -1484,8 +1507,8 @@ impl ProgramInstruction {
                                                         };
                                                         let signer_seeds: &[&[&[u8]]; 1] = #signer_var_token_stream
                                                         let ctx = CpiContext::new_with_signer(
-                                                            ctx.accounts.token_program.to_account_info(), 
-                                                            cpi_accounts, 
+                                                            ctx.accounts.token_program.to_account_info(),
+                                                            cpi_accounts,
                                                             signer_seeds
                                                         );
                                                         transfer_checked(ctx, #amount, #decimal)?;
@@ -1736,8 +1759,8 @@ impl ProgramInstruction {
             })
         }
         let info_token_stream = match accounts.is_empty() {
-            true => quote!{},
-            false => quote!{<'info>}
+            true => quote! {},
+            false => quote! {<'info>},
         };
         quote! {
             #[derive(Accounts)]
@@ -1792,7 +1815,7 @@ pub fn extract_name_and_len_with_type_params(
     let ts_type: String;
     let mut length: u32 = 0;
     match primary_type_ident {
-        "String" => {
+        "Str" => {
             length += type_params.params[0]
                 .as_ts_lit_type()
                 .ok_or(PoseidonError::TSLiteralTypeNotFound)?
@@ -1800,7 +1823,7 @@ pub fn extract_name_and_len_with_type_params(
                 .as_number()
                 .ok_or(PoseidonError::NumericLiteralNotFound)?
                 .value as u32;
-            ts_type = String::from("String");
+            ts_type = String::from("Str");
         }
         "Vec" => {
             let vec_type_name = type_params.params[0]
@@ -1825,8 +1848,7 @@ pub fn extract_name_and_len_with_type_params(
                 .ok_or(PoseidonError::TypeReferenceNotFound)?
                 .type_params
             {
-                let type_ident_layer = type_params
-                    .params[0]
+                let type_ident_layer = type_params.params[0]
                     .as_ts_type_ref()
                     .ok_or(PoseidonError::TypeReferenceNotFound)?
                     .type_name
@@ -1838,7 +1860,7 @@ pub fn extract_name_and_len_with_type_params(
                 // for multiple nesting support recursion can be used
                 // (type_name_layer, length_layer) = extract_name_and_len_with_type_params(type_ident_layer, type_params_layer)?;
 
-                if type_ident_layer == "String" {
+                if type_ident_layer == "Str" {
                     let string_length = type_params_layer.params[0]
                         .as_ts_lit_type()
                         .ok_or(PoseidonError::TSLiteralTypeNotFound)?
@@ -1847,22 +1869,19 @@ pub fn extract_name_and_len_with_type_params(
                         .ok_or(PoseidonError::NumericLiteralNotFound)?
                         .value as u32;
 
-                    length += vec_len*(4 + string_length);
-                    ts_type = format!("Vec<String>");
-
-                }else {
-                    return Err(
-                        PoseidonError::KeyWordTypeNotSupported(format!("{:?}", primary_type_ident)).into(),
-                    )
+                    length += vec_len * (4 + string_length);
+                    ts_type = format!("Vec<Str>");
+                } else {
+                    return Err(PoseidonError::KeyWordTypeNotSupported(format!(
+                        "{:?}",
+                        primary_type_ident
+                    ))
+                    .into());
                 }
-   
             } else {
                 length += vec_len;
                 ts_type = format!("Vec<{}>", vec_type_name);
             }
-
-            
-
         }
         _ => {
             return Err(
@@ -1908,7 +1927,7 @@ impl ProgramAccount {
                 let (field_type, len, _optional) = extract_type(binding)
                     .unwrap_or_else(|_| panic!("Keyword type is not supported"));
 
-                if field_type.contains("Vec") | field_type.contains("String") {
+                if field_type.contains("Vec") | field_type.contains("Str") {
                     space += 4;
                 }
 
@@ -1922,7 +1941,7 @@ impl ProgramAccount {
                     space += 2 * len;
                 } else if field_type.contains("u8") | field_type.contains("i8") {
                     space += 1 * len;
-                } else if field_type.contains("String") {
+                } else if field_type.contains("Str") {
                     space += len;
                 } else if field_type.contains("Boolean") {
                     space += len;
