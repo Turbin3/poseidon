@@ -1663,7 +1663,7 @@ impl ProgramInstruction {
                                             let right_prop = m.prop.as_ident().ok_or(PoseidonError::IdentNotFound)?.sym.as_ref();
                                             let right_obj_ident = Ident::new(&right_obj.to_case(Case::Snake), proc_macro2::Span::call_site());
                                             let right_prop_ident = Ident::new(&right_prop.to_case(Case::Snake), proc_macro2::Span::call_site());
-                                            if let Some(_) = ix_accounts.get(right_obj){
+                                            if ix_accounts.get(right_obj).is_some() && right_prop == "key" {
                                                 ix_body.push(quote!{
                                                     ctx.accounts.#left_obj_ident.#left_prop_ident =  ctx.accounts.#right_obj_ident.key();
                                                 });
