@@ -620,6 +620,8 @@ impl ProgramInstruction {
                     program_mod.add_import("anchor_spl", "token", "Mint");
                     let cur_ix_acc = ix_accounts.get_mut(&name.clone()).unwrap();
                     cur_ix_acc.is_mut = true;
+                    ix.uses_token_program = true;
+                    program_mod.add_import("anchor_spl", "token", "Token");
                 } else if of_type == "TokenAccount" {
                     ix_accounts.insert(
                         name.clone(),
