@@ -11,12 +11,12 @@
   - [Test Your Program!](#test-your-program)
   - [Thoughts \& Takeaway](#thoughts--takeaway)
   - [Reference](#reference)
-
+ 
 <!-- tocstop -->
 
 ## Overview
 
-This tutorial is for people with no experience in Rust who want to quickly write a Solana program in TypeScript. Poseidon will help you transpile your TypeScript code into Anchor (a Solana framework), allowing you to understand how Solana works through practical examples.
+This tutorial is for people without experience in Rust who want to write a Solana program in TypeScript quickly. Poseidon will help you transpile your TypeScript code into Anchor (a Solana framework), allowing you to understand how Solana works through practical examples.
 
 Please note that if your goal is to become a protocol engineer on Solana, you'll eventually need to learn Anchor and Rust to understand how Solana works at a lower level.
 
@@ -26,7 +26,7 @@ Without further ado, let’s get your hands dirty!
 
 ### Prerequisites
 
-> If you’ve already install Solana and Anchor, feel free to skip `prerequisites` part
+> If you’ve already installed Solana and Anchor, feel free to skip the `prerequisites` part
 
 During this tutorial, we will be using the following tools:
 
