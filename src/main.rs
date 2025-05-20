@@ -1,5 +1,6 @@
 mod cli;
 mod errors;
+mod helpers;
 mod parse_ts;
 mod rs_types;
 mod transpiler;
